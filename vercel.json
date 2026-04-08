@@ -130,16 +130,20 @@
       "maxDuration": 60
     }
   },
+
   "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "https://sxvjgevfdzclwyxrqxbe.supabase.co",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_IXTJdUxVfzRQz0w80wGg9g_a3wmVbRo",
+    "DATABASE_URL": "postgres://postgres.sxvjgevfdzclwyxrqxbe:jnRtgRtc5J8iBlyZ@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=no-verify",
+    "NODE_ENV": "production",
+    "PORT": "5000",
     "STATIC_SERVER_URL": "https://gym-genie-fitness.vercel.app",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://sxvjgevfdzclwyxrqxbe.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9xYWRsdGZ6amNrZ21qbWpoc3FrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxOTQ3MjMsImV4cCI6MjA4Mzc3MDcyM30.GMZtVnJEz2tORV15dfHPykj35uVhR3njOU8Jk6BbCes",
     "VITE_FIREBASE_API_KEY": "AIzaSyDLfHQ18kDZPqeziMm5d_9589FafsZqxhA",
     "VITE_FIREBASE_AUTH_DOMAIN": "gym-genie-push-notifications.firebaseapp.com",
     "VITE_FIREBASE_PROJECT_ID": "gym-genie-push-notifications",
     "VITE_FIREBASE_STORAGE_BUCKET": "gym-genie-push-notifications.firebasestorage.app",
     "VITE_FIREBASE_MESSAGING_SENDER_ID": "295629958510",
     "VITE_FIREBASE_APP_ID": "1:295629958510:web:ed13edd1bed444031be57f",
-    "VITE_FIREBASE_VAPID_KEY": "BLY3GL44_310eL8v4W0LCx2b_czx5u2RWVvAI5retnBaoXCU5S2kRNBdwSCbtPMDTY25pw010gZIQLgBTO4goXU"
+"VITE_FIREBASE_VAPID_KEY": "BLY3GL44_310eL8v4W0LCx2b_czx5u2RWVvAI5retnBaoXCU5S2kRNBdwSCbtPMDTY25pw010gZIQLgBTO4goXU"
   }
 }
