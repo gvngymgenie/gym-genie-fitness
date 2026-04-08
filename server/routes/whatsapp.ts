@@ -1,0 +1,335 @@
+import { Express } from "express";
+import { z } from "zod";
+import { db } from "../db";
+import { members } from "@shared/schema";
+import {
+  sendWhatsAppTestMessage,
+  checkWhatsAppHealth,
+  WhatsAppTestRequest,
+  WhatsAppHealthResponse,
+  isWhatsAppConfigured
+} from "../services/whatsapp";
+
+function normalizePhoneNumber(phone: string): string {
+  // Remove any non-digit characters
+  const digits = phone.replace(/\D/g, '');
+  
+  // If it's exactly 10 digits, add +91 prefix
+  if (digits.length === 10) {
+    return '+91' + digits;
+  }
+  
+  // If it already has country code, ensure it has +
+  if (digits.length > 10 && !phone.startsWith('+')) {
+    return '+' + digits;
+  }
+  
+  // Return as-is if it already has + or is not 10 digits
+  return phone.startsWith('+') ? phone : '+' + digits;
+}
+const whatsappTestSchema = z.object({
+  to: z.string().min(8, "Phone number must be at least 8 characters"),
+  message: z.string().min(1, "Message cannot be empty").max(1000, "Message too long")
+});
+
+const whatsappSendSchema = z.object({
+  message: z.string().min(1, "Message cannot be empty").max(1000, "Message too long"),
+  recipientType: z.enum(["individual", "all"]),
+  memberIds: z.array(z.string()).optional(),
+  memberId: z.string().optional(),
+  phone: z.string().optional(),
+  recipientName: z.string().optional(),
+});
+
+// In-memory message log (replace with DB table later)
+export interface WhatsAppMessageLog {
+  id: string;
+  recipientType: "individual" | "all";
+  memberId?: string;
+  recipientName: string;
+  phone: string;
+  message: string;
+  status: "sent" | "failed";
+  errorMessage?: string;
+  messageId?: string;
+  createdAt: string;
+}
+
+const messageLog: WhatsAppMessageLog[] = [];
+
+function generateId(): string {
+  return `wa_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+/**
+ * Register WhatsApp routes
+ */
+export function registerWhatsAppRoutes(app: Express): void {
+  // Health check endpoint
+  app.get("/api/whatsapp/health", async (_req, res) => {
+    try {
+      const healthResponse: WhatsAppHealthResponse = await checkWhatsAppHealth();
+      if (healthResponse.success) {
+        res.json({
+          success: true,
+          message: healthResponse.message,
+          phoneNumberId: healthResponse.phoneNumberId,
+          configured: isWhatsAppConfigured()
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: healthResponse.message,
+          error: healthResponse.error,
+          configured: isWhatsAppConfigured()
+        });
+      }
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Internal server error during health check",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Test message endpoint (legacy)
+  app.post("/api/whatsapp/test", async (req, res) => {
+    try {
+      const validatedData = whatsappTestSchema.parse(req.body);
+      const request: WhatsAppTestRequest = { to: validatedData.to, message: validatedData.message };
+      const response = await sendWhatsAppTestMessage(request);
+
+      if ('error' in response) {
+        return res.status(400).json({
+          success: false,
+          message: "Failed to send WhatsApp message",
+          error: response.error.message,
+          details: response.error
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "WhatsApp message sent successfully",
+        messageId: response.messages?.[0]?.id,
+        phoneNumber: response.contacts?.[0]?.wa_id,
+        response
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: "Invalid request data", error: error.issues });
+      }
+      res.status(500).json({ success: false, message: "Failed to send WhatsApp message", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Send message endpoint (with logging)
+  app.post("/api/whatsapp/send", async (req, res) => {
+    try {
+      const data = whatsappSendSchema.parse(req.body);
+
+      if (data.recipientType === "individual") {
+        // Support both single memberId and array of memberIds
+        const memberIds = data.memberIds || (data.memberId ? [data.memberId] : []);
+        console.log("[WhatsApp] Received request:", JSON.stringify({ memberIds: memberIds, phone: data.phone, memberId: data.memberId }));
+        const hasSelectedMembers = memberIds.length > 0;
+        const hasPhone = !!data.phone;
+        
+        // Allow if: has selected members OR has phone number
+        if (!hasSelectedMembers && !hasPhone) {
+          return res.status(400).json({ success: false, message: "Please select members or enter a phone number" });
+        }
+
+        // If members are selected, send to all of them
+        if (hasSelectedMembers) {
+          // Get all members and filter to selected ones
+          const allMembers = await db.select().from(members);
+          console.log("[WhatsApp] Total members in DB:", allMembers.length);
+          console.log("[WhatsApp] Looking for memberIds:", memberIds);
+          
+          const selectedMembers = allMembers.filter((m: any) => memberIds.includes(m.id));
+          console.log("[WhatsApp] Filtered members count:", selectedMembers.length);
+          
+          if (selectedMembers.length === 0) {
+            console.log("[WhatsApp] ERROR: No matching members found in database!");
+            console.log("[WhatsApp] Available member IDs:", allMembers.slice(0, 5).map((m: any) => m.id));
+            return res.status(400).json({ 
+              success: false, 
+              message: `No matching members found. Received ${memberIds.length} member IDs but none matched in database.`, 
+              debug: { requestedIds: memberIds, availableCount: allMembers.length }
+            });
+          }
+          
+          console.log("[WhatsApp] Found members:", selectedMembers.map((m: any) => ({ id: m.id, firstName: m.firstName, phone: m.phone })));
+          
+          const results: WhatsAppMessageLog[] = [];
+          let sentCount = 0;
+          let failedCount = 0;
+          let skippedCount = 0;
+
+          for (const member of selectedMembers) {
+            console.log("[WhatsApp] Processing member:", member.id, member.firstName, "phone:", member.phone);
+            
+            if (!member.phone) {
+              console.log("[WhatsApp] Skipping member - no phone number:", member.id);
+              skippedCount++;
+              continue;
+            }
+
+            const request: WhatsAppTestRequest = { to: normalizePhoneNumber(member.phone), message: data.message };
+            let response: any;
+            try {
+              response = await sendWhatsAppTestMessage(request);
+            } catch (e) {
+              response = { error: { message: e instanceof Error ? e.message : "Unknown error" } };
+            }
+
+            const logEntry: WhatsAppMessageLog = {
+              id: generateId(),
+              recipientType: "individual",
+              memberId: member.id,
+              recipientName: `${member.firstName} ${member.lastName || ""}`.trim(),
+              phone: member.phone,
+              message: data.message,
+              status: "error" in response ? "failed" : "sent",
+              errorMessage: "error" in response ? response.error.message : undefined,
+              messageId: "error" in response ? undefined : response.messages?.[0]?.id,
+              createdAt: new Date().toISOString(),
+            };
+
+            results.push(logEntry);
+            messageLog.unshift(logEntry);
+            if (logEntry.status === "sent") sentCount++; else failedCount++;
+          }
+
+          return res.json({ 
+            success: true, 
+            message: `Sent to ${sentCount} member${sentCount !== 1 ? "s" : ""}${failedCount > 0 ? `, ${failedCount} failed` : ""}${skippedCount > 0 ? `, ${skippedCount} skipped (no phone)` : ""}`, 
+            sentCount, 
+            failedCount, 
+            skippedCount,
+            results 
+          });
+        }
+
+        // Fallback: send to provided phone number
+        const request: WhatsAppTestRequest = { to: normalizePhoneNumber(data.phone!), message: data.message };
+        const response = await sendWhatsAppTestMessage(request);
+
+        const logEntry: WhatsAppMessageLog = {
+          id: generateId(),
+          recipientType: "individual",
+          memberId: data.memberId,
+          recipientName: data.recipientName || data.phone!,
+          phone: data.phone!,
+          message: data.message,
+          status: "error" in response ? "failed" : "sent",
+          errorMessage: "error" in response ? response.error.message : undefined,
+          messageId: "error" in response ? undefined : response.messages?.[0]?.id,
+          createdAt: new Date().toISOString(),
+        };
+        messageLog.unshift(logEntry);
+
+        if ("error" in response) {
+          return res.status(400).json({ success: false, message: "Failed to send WhatsApp message", error: response.error.message, log: logEntry });
+        }
+
+        return res.json({ success: true, message: "WhatsApp message sent successfully", log: logEntry });
+
+      } else {
+        // Broadcast to all members
+        const allMembers = await db.select().from(members);
+        const results: WhatsAppMessageLog[] = [];
+        let sentCount = 0;
+        let failedCount = 0;
+
+        for (const member of allMembers) {
+          if (!member.phone) continue;
+
+          const request: WhatsAppTestRequest = { to: normalizePhoneNumber(member.phone), message: data.message };
+          let response: any;
+          try {
+            response = await sendWhatsAppTestMessage(request);
+          } catch (e) {
+            response = { error: { message: e instanceof Error ? e.message : "Unknown error" } };
+          }
+
+          const logEntry: WhatsAppMessageLog = {
+            id: generateId(),
+            recipientType: "all",
+            memberId: member.id,
+            recipientName: `${member.firstName} ${member.lastName || ""}`.trim(),
+            phone: member.phone,
+            message: data.message,
+            status: "error" in response ? "failed" : "sent",
+            errorMessage: "error" in response ? response.error.message : undefined,
+            messageId: "error" in response ? undefined : response.messages?.[0]?.id,
+            createdAt: new Date().toISOString(),
+          };
+
+          results.push(logEntry);
+          messageLog.unshift(logEntry);
+          if (logEntry.status === "sent") sentCount++; else failedCount++;
+        }
+
+        return res.json({ success: true, message: `Broadcast complete: ${sentCount} sent, ${failedCount} failed`, sentCount, failedCount, results });
+      }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: "Invalid request data", error: error.issues });
+      }
+      res.status(500).json({ success: false, message: "Failed to send WhatsApp message", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Get message history
+  app.get("/api/whatsapp/messages", (_req, res) => {
+    const limit = 100;
+    res.json(messageLog.slice(0, limit));
+  });
+
+  // Delete message from history
+  app.delete("/api/whatsapp/messages/:id", (req, res) => {
+    const { id } = req.params;
+    const index = messageLog.findIndex(m => m.id === id);
+    
+    if (index === -1) {
+      return res.status(404).json({ success: false, message: "Message not found" });
+    }
+    
+    messageLog.splice(index, 1);
+    res.json({ success: true, message: "Message deleted" });
+  });
+
+  // Get stats
+  app.get("/api/whatsapp/stats", (_req, res) => {
+    const total = messageLog.length;
+    const sent = messageLog.filter(m => m.status === "sent").length;
+    const failed = messageLog.filter(m => m.status === "failed").length;
+    res.json({ total, sent, failed });
+  });
+
+  // Status endpoint
+  app.get("/api/whatsapp/status", async (_req, res) => {
+    try {
+      const configured = isWhatsAppConfigured();
+      if (!configured) {
+        return res.json({
+          configured: false,
+          message: "WhatsApp API is not configured",
+          details: { hasToken: !!process.env.WHATSAPP_API_TOKEN, hasPhoneNumberId: !!process.env.PHONENUMBER_ID }
+        });
+      }
+      const healthResponse = await checkWhatsAppHealth();
+      res.json({
+        configured: true,
+        message: "WhatsApp API is configured",
+        health: healthResponse,
+        details: { hasToken: !!process.env.WHATSAPP_API_TOKEN, hasPhoneNumberId: !!process.env.PHONENUMBER_ID }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Error checking WhatsApp status", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+}

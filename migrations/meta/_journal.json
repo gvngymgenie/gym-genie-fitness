@@ -1,0 +1,118 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1768508967052,
+      "tag": "0000_bouncy_next_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1769633124968,
+      "tag": "0001_stiff_lightspeed",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770459825527,
+      "tag": "0002_faithful_mongu",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1770476092661,
+      "tag": "0003_pink_deathstrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1771000000000,
+      "tag": "0004_add_training_type_column",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1771000000001,
+      "tag": "0004_fix_interest_areas_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1771000000002,
+      "tag": "0005_fix_members_interest_areas_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1771000000003,
+      "tag": "0006_add_trainer_id_to_members",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1771000000004,
+      "tag": "0007_add_payments_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1771000000005,
+      "tag": "0008_safe_fix_interest_areas_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1771000000006,
+      "tag": "0009_add_role_permissions_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1771000000007,
+      "tag": "0010_add_options_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1771000000008,
+      "tag": "0011_add_training_types_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1771000000009,
+      "tag": "0012_add_member_measurements_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1771000000010,
+      "tag": "0013_add_custom_workout_plan",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1771250267581,
+      "tag": "0015_hesitant_lockjaw",
+      "breakpoints": true
+    }
+  ]
+}

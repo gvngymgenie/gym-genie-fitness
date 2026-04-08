@@ -1,0 +1,136 @@
+
+> rest-express@1.0.0 dev
+> tsx server/index.ts
+
+Firebase: Service account loaded successfully
+🚀 SERVER: Starting server initialization...
+🚀 SERVER: Registering routes...
+Cloudinary not configured - avatar uploads will fail in production
+✅ SERVER: Routes registered successfully
+🚀 SERVER: Environment check:
+  NODE_ENV: production
+  VERCEL: undefined
+  VERCEL_ENV: undefined
+  DATABASE_URL exists: true
+(node:68891) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✅ SERVER: Database connection verified
+📋 SERVER: Registered routes:
+  POST /api/auth/login
+  POST /api/auth/member/send-otp
+  POST /api/auth/member/verify-otp
+  GET /api/staff
+  GET /api/users
+  GET /api/users/:id
+  POST /api/users
+  PATCH /api/users/:id
+  DELETE /api/users/:id
+  GET /api/users/role/:role
+  GET /api/roles/permissions
+  GET, PUT /api/company-settings
+  GET /api/plans
+  GET /api/plans/:id
+  POST /api/plans
+  PATCH /api/plans/:id
+  DELETE /api/plans/:id
+  GET /api/inventory
+  GET /api/inventory/:id
+  POST /api/inventory
+  PATCH /api/inventory/:id
+  DELETE /api/inventory/:id
+  GET /api/leads
+  GET /api/leads/:id
+  POST /api/leads
+  PATCH /api/leads/:id
+  DELETE /api/leads/:id
+  GET /api/members
+  GET /api/members/:id
+  POST /api/members
+  PATCH /api/members/:id
+  DELETE /api/members/:id
+  POST /api/members/:id/avatar
+  DELETE /api/members/:id/avatar
+  GET /api/member/:userOrMemberId/dashboard
+  GET /api/members/:memberId/attendance
+  GET /api/members/:memberId/bmi-records
+  POST /api/members/:memberId/bmi-records
+  GET /api/members/:memberId/body-composition
+  POST /api/members/:memberId/body-composition
+  DELETE /api/members/:memberId/body-composition/:id
+  GET /api/members/:memberId/measurements
+  GET /api/members/:memberId/measurements/:id
+  POST /api/members/:memberId/measurements
+  PATCH /api/members/:memberId/measurements/:id
+  DELETE /api/members/:memberId/measurements/:id
+  GET /api/branches
+  GET /api/branches/:id
+  POST /api/branches
+  PATCH /api/branches/:id
+  DELETE /api/branches/:id
+  GET /api/attendance
+  POST /api/attendance
+  DELETE /api/attendance/:id
+  GET /api/notifications/preferences
+  POST /api/notifications/preferences
+  POST /api/notifications/otp
+  POST /api/notifications/workout-reminder
+  POST /api/notifications/general
+  GET /api/notifications/history
+  POST /api/notifications/:id/read
+  DELETE /api/notifications/:id
+  GET /api/notifications/stats
+  GET /api/notifications
+  POST /api/notifications
+  GET /api/workout-programs
+  POST /api/workout-programs
+  PATCH /api/workout-programs/:id
+  DELETE /api/workout-programs/:id
+  GET /api/workout-programs/:programId/assignments
+  POST /api/workout-programs/:programId/assignments
+  DELETE /api/workout-programs/:programId/assignments/:memberId
+  GET /api/members/:memberId/workout-assignments
+  GET /api/diet-plans
+  POST /api/diet-plans
+  PATCH /api/diet-plans/:id
+  DELETE /api/diet-plans/:id
+  GET /api/diet-plans/:dietPlanId/assignments
+  POST /api/diet-plans/:dietPlanId/assignments
+  DELETE /api/diet-plans/:dietPlanId/assignments/:memberId
+  GET /api/members/:memberId/diet-assignments
+  GET /api/trainers/:trainerId/profile
+  POST /api/trainers/:trainerId/profile
+  PATCH /api/trainers/:trainerId/profile
+  GET /api/trainers/:trainerId/bookings
+  POST /api/trainers/:trainerId/bookings
+  PATCH /api/trainers/:trainerId/bookings/:bookingId
+  DELETE /api/trainers/:trainerId/bookings/:bookingId
+  GET /api/trainers/:trainerId/feedback
+  POST /api/trainers/:trainerId/feedback
+  GET /api/trainers/:trainerId/availability
+  POST /api/trainers/:trainerId/availability
+  PUT /api/trainers/:trainerId/availability/batch
+  GET /api/member/:memberId/bookings
+  POST /api/push/subscribe
+  GET /api/push/firebase-config
+  GET /api/revenue/today
+  GET /api/revenue/daily
+  GET /api/revenue/streams
+  GET /api/revenue/monthly
+  POST /api/revenue/record
+📊 SERVER: Total routes registered: 101
+✅ Local: Serving uploads from /Users/kousi/InkGit/experiments/Gym App/03/Gym-Genie/uploads
+4:44:15 PM [express] serving on port 5000
+📨 API REQUEST: GET /api/plans - Headers: {"host":"localhost:5000","user-agent":"curl/8.11.1","accept":"*/*"}
+4:44:22 PM [express] GET /api/plans 200 in 330ms :: [{"id":"1ce6b706-eb26-401a-a85b-7559044e5c82","name":"Monthly Plan","duration":"1 Month","durationMonths":1,"price":1500,"features":["Free-weight and cardio sections","Basic workout guidance from floor trainer","Access during all working hours","Free Locker"],"isActive":true,"createdAt":"2026-01-15T19:06:18.580Z"},{"id":"1c3daf61-cc10-4c9e-8624-12034f73c11f","name":"Super Monthly","duration":"3 Months","durationMonths":3,"price":6000,"features":["1 month Cardio","Free Wifi","Free Locker","Free-weight and cardio sections"],"isActive":true,"createdAt":"2026-01-14T20:07:35.025Z"},{"id":"98e9cea6-9039-45f5-bcb6-c968ba053045","name":"Quarterly Plan","duration":"3 Months","durationMonths":3,"price":4000,"features":["All benefits of Monthly Plan","Structured workout routine support","Periodic progress check"],"isActive":true,"createdAt":"2026-01-15T19:10:15.244Z"},{"id":"a4b1d5c1-c7f4-487b-bd68-ab8c9c97a863","name":"Half-Yearly Plan","duration":"6 Months","durationMonths":6,"price":7500,"features":["All benefits of Quarterly Plan","Personalized workout plan","Monthly progress tracking"],"isActive":true,"createdAt":"2026-01-15T19:35:27.557Z"},{"id":"54b7be87-b09a-47d9-a0d5-7889138f87ee","name":"Yearly Plan","duration":"12 Months","durationMonths":12,"price":14000,"features":["All benefits of Half-Yearly Plan","Annual fitness assessment","Priority support from trainers"],"isActive":true,"createdAt":"2026-01-15T19:36:18.975Z"}]
+📨 API REQUEST: GET /api/plans - Headers: {"host":"localhost:5000","user-agent":"curl/8.11.1","accept":"*/*"}
+4:44:54 PM [express] GET /api/plans 200 in 2882ms :: [{"id":"1ce6b706-eb26-401a-a85b-7559044e5c82","name":"Monthly Plan","duration":"1 Month","durationMonths":1,"price":1500,"features":["Free-weight and cardio sections","Basic workout guidance from floor trainer","Access during all working hours","Free Locker"],"isActive":true,"createdAt":"2026-01-15T19:06:18.580Z"},{"id":"1c3daf61-cc10-4c9e-8624-12034f73c11f","name":"Super Monthly","duration":"3 Months","durationMonths":3,"price":6000,"features":["1 month Cardio","Free Wifi","Free Locker","Free-weight and cardio sections"],"isActive":true,"createdAt":"2026-01-14T20:07:35.025Z"},{"id":"98e9cea6-9039-45f5-bcb6-c968ba053045","name":"Quarterly Plan","duration":"3 Months","durationMonths":3,"price":4000,"features":["All benefits of Monthly Plan","Structured workout routine support","Periodic progress check"],"isActive":true,"createdAt":"2026-01-15T19:10:15.244Z"},{"id":"a4b1d5c1-c7f4-487b-bd68-ab8c9c97a863","name":"Half-Yearly Plan","duration":"6 Months","durationMonths":6,"price":7500,"features":["All benefits of Quarterly Plan","Personalized workout plan","Monthly progress tracking"],"isActive":true,"createdAt":"2026-01-15T19:35:27.557Z"},{"id":"54b7be87-b09a-47d9-a0d5-7889138f87ee","name":"Yearly Plan","duration":"12 Months","durationMonths":12,"price":14000,"features":["All benefits of Half-Yearly Plan","Annual fitness assessment","Priority support from trainers"],"isActive":true,"createdAt":"2026-01-15T19:36:18.975Z"}]
+📨 API REQUEST: GET /api/plans - Headers: {"host":"localhost:5000","user-agent":"curl/8.11.1","accept":"*/*"}
+4:46:10 PM [express] GET /api/plans 200 in 3493ms :: [{"id":"1ce6b706-eb26-401a-a85b-7559044e5c82","name":"Monthly Plan","duration":"1 Month","durationMonths":1,"price":1500,"features":["Free-weight and cardio sections","Basic workout guidance from floor trainer","Access during all working hours","Free Locker"],"isActive":true,"createdAt":"2026-01-15T19:06:18.580Z"},{"id":"1c3daf61-cc10-4c9e-8624-12034f73c11f","name":"Super Monthly","duration":"3 Months","durationMonths":3,"price":6000,"features":["1 month Cardio","Free Wifi","Free Locker","Free-weight and cardio sections"],"isActive":true,"createdAt":"2026-01-14T20:07:35.025Z"},{"id":"98e9cea6-9039-45f5-bcb6-c968ba053045","name":"Quarterly Plan","duration":"3 Months","durationMonths":3,"price":4000,"features":["All benefits of Monthly Plan","Structured workout routine support","Periodic progress check"],"isActive":true,"createdAt":"2026-01-15T19:10:15.244Z"},{"id":"a4b1d5c1-c7f4-487b-bd68-ab8c9c97a863","name":"Half-Yearly Plan","duration":"6 Months","durationMonths":6,"price":7500,"features":["All benefits of Quarterly Plan","Personalized workout plan","Monthly progress tracking"],"isActive":true,"createdAt":"2026-01-15T19:35:27.557Z"},{"id":"54b7be87-b09a-47d9-a0d5-7889138f87ee","name":"Yearly Plan","duration":"12 Months","durationMonths":12,"price":14000,"features":["All benefits of Half-Yearly Plan","Annual fitness assessment","Priority support from trainers"],"isActive":true,"createdAt":"2026-01-15T19:36:18.975Z"}]
+📨 API REQUEST: GET /api/plans - Headers: {"host":"localhost:5000","user-agent":"curl/8.11.1","accept":"*/*"}
+4:52:04 PM [express] GET /api/plans 200 in 3445ms :: [{"id":"1ce6b706-eb26-401a-a85b-7559044e5c82","name":"Monthly Plan","duration":"1 Month","durationMonths":1,"price":1500,"features":["Free-weight and cardio sections","Basic workout guidance from floor trainer","Access during all working hours","Free Locker"],"isActive":true,"createdAt":"2026-01-15T19:06:18.580Z"},{"id":"1c3daf61-cc10-4c9e-8624-12034f73c11f","name":"Super Monthly","duration":"3 Months","durationMonths":3,"price":6000,"features":["1 month Cardio","Free Wifi","Free Locker","Free-weight and cardio sections"],"isActive":true,"createdAt":"2026-01-14T20:07:35.025Z"},{"id":"98e9cea6-9039-45f5-bcb6-c968ba053045","name":"Quarterly Plan","duration":"3 Months","durationMonths":3,"price":4000,"features":["All benefits of Monthly Plan","Structured workout routine support","Periodic progress check"],"isActive":true,"createdAt":"2026-01-15T19:10:15.244Z"},{"id":"a4b1d5c1-c7f4-487b-bd68-ab8c9c97a863","name":"Half-Yearly Plan","duration":"6 Months","durationMonths":6,"price":7500,"features":["All benefits of Quarterly Plan","Personalized workout plan","Monthly progress tracking"],"isActive":true,"createdAt":"2026-01-15T19:35:27.557Z"},{"id":"54b7be87-b09a-47d9-a0d5-7889138f87ee","name":"Yearly Plan","duration":"12 Months","durationMonths":12,"price":14000,"features":["All benefits of Half-Yearly Plan","Annual fitness assessment","Priority support from trainers"],"isActive":true,"createdAt":"2026-01-15T19:36:18.975Z"}]
+📨 API REQUEST: POST /api/auth/login - Headers: {"host":"localhost:5000","user-agent":"curl/8.11.1","accept":"*/*","content-type":"application/json","content-length":"45"}
+4:52:26 PM [express] POST /api/auth/login 200 in 3767ms :: {"user":{"id":"5b986fb4-eb09-4f9b-a394-19400cc49b3a","username":"kousi","email":"kousi@testmail.com","firstName":"Kousi","lastName":"M","phone":"9962017899","role":"admin","isActive":true,"createdAt":"2026-01-14T20:02:20.867Z"}}
+📨 API REQUEST: POST /api/auth/login - Headers: {"host":"localhost:5000","user-agent":"curl/8.11.1","accept":"*/*","content-type":"application/json","content-length":"50"}
+4:52:38 PM [express] POST /api/auth/login 401 in 2475ms :: {"error":"Invalid username or password"}
+📨 API REQUEST: GET /api/users - Headers: {"host":"localhost:5000","user-agent":"curl/8.11.1","accept":"*/*"}
+4:52:49 PM [express] GET /api/users 200 in 1596ms :: [{"id":"88e9cca5-1a3e-44c5-a7a5-d295bc15ee8e","username":"ajay5","email":"zjh38750@toaik.com","firstName":"Ajay","lastName":"Gosh","phone":"2345678904","role":"manager","isActive":true,"createdAt":"2026-01-16T01:56:46.390Z"},{"id":"505d43e5-c9e4-4c9c-a318-2c7d2b455498","username":"nandir","email":"nandi.r0819@gmail.com","firstName":"Nandhini","lastName":"Rajendran","phone":"2345678909","role":"staff","isActive":true,"createdAt":"2026-01-15T19:40:06.611Z"},{"id":"a3e852ce-6726-491e-bc34-c17776a55174","username":"jack","email":"jack@testmail.com","firstName":"Jack","lastName":"Daniel","phone":"23423523","role":"trainer","isActive":true,"createdAt":"2026-01-14T21:15:44.531Z"},{"id":"5b986fb4-eb09-4f9b-a394-19400cc49b3a","username":"kousi","email":"kousi@testmail.com","firstName":"Kousi","lastName":"M","phone":"9962017899","role":"admin","isActive":true,"createdAt":"2026-01-14T20:02:20.867Z"}]
