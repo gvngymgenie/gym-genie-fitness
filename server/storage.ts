@@ -666,7 +666,7 @@ export class DatabaseStorage implements IStorage {
     return await drizzleDb.select().from(schema.workoutPrograms).where(eq(schema.workoutPrograms.memberId, memberId));
   }
 
-  async createWorkoutProgram(program: InsertWorkoutProgram): Promise<WorkoutProgram> {
+  async createWorkoutProgram(program: InsertWorkoutProgram & { collectionIds?: string[] }): Promise<WorkoutProgram> {
     const [created] = await drizzleDb.insert(schema.workoutPrograms).values({
       ...program,
       memberId: program.memberId || null,
@@ -674,10 +674,16 @@ export class DatabaseStorage implements IStorage {
       exercises: (program.exercises as any) || [],
       equipment: (program.equipment as any) || [],
     }).returning();
+    
+    // Handle collection assignments
+    if ((program as any).collectionIds && (program as any).collectionIds.length > 0) {
+      await this.addWorkoutToCollections(created.id, (program as any).collectionIds);
+    }
+    
     return created;
   }
 
-  async updateWorkoutProgram(id: string, program: UpdateWorkoutProgram): Promise<WorkoutProgram | undefined> {
+  async updateWorkoutProgram(id: string, program: UpdateWorkoutProgram & { collectionIds?: string[] }): Promise<WorkoutProgram | undefined> {
     const [updated] = await drizzleDb.update(schema.workoutPrograms).set({
       ...program,
       memberId: program.memberId !== undefined ? program.memberId : undefined,
@@ -685,12 +691,61 @@ export class DatabaseStorage implements IStorage {
       exercises: program.exercises ? (program.exercises as any) : undefined,
       equipment: program.equipment ? (program.equipment as any) : undefined,
     }).where(eq(schema.workoutPrograms.id, id)).returning();
+    
+    // Handle collection assignments
+    if ((program as any).collectionIds !== undefined) {
+      await this.updateWorkoutCollections(id, (program as any).collectionIds);
+    }
+    
     return updated || undefined;
   }
 
   async deleteWorkoutProgram(id: string): Promise<boolean> {
     const result = await drizzleDb.delete(schema.workoutPrograms).where(eq(schema.workoutPrograms.id, id)).returning();
     return result.length > 0;
+  }
+
+  // Workout Collection Members
+  async addWorkoutToCollections(workoutId: string, collectionIds: string[]): Promise<void> {
+    const values = collectionIds.map(collectionId => ({
+      workoutId,
+      collectionId,
+    }));
+    await drizzleDb.insert(schema.workoutCollectionMembers).values(values).onConflictDoNothing({
+      target: [schema.workoutCollectionMembers.workoutId, schema.workoutCollectionMembers.collectionId],
+    });
+  }
+
+  async removeWorkoutFromCollections(workoutId: string, collectionIds: string[]): Promise<void> {
+    await drizzleDb.delete(schema.workoutCollectionMembers).where(
+      and(
+        eq(schema.workoutCollectionMembers.workoutId, workoutId),
+        inArray(schema.workoutCollectionMembers.collectionId, collectionIds)
+      )
+    );
+  }
+
+  async updateWorkoutCollections(workoutId: string, collectionIds: string[]): Promise<void> {
+    // Remove all existing
+    await drizzleDb.delete(schema.workoutCollectionMembers).where(
+      eq(schema.workoutCollectionMembers.workoutId, workoutId)
+    );
+    // Add new
+    if (collectionIds.length > 0) {
+      const values = collectionIds.map(collectionId => ({
+        workoutId,
+        collectionId,
+      }));
+      await drizzleDb.insert(schema.workoutCollectionMembers).values(values);
+    }
+  }
+
+  async getWorkoutCollections(workoutId: string): Promise<string[]> {
+    const members = await drizzleDb
+      .select({ collectionId: schema.workoutCollectionMembers.collectionId })
+      .from(schema.workoutCollectionMembers)
+      .where(eq(schema.workoutCollectionMembers.workoutId, workoutId));
+    return members.map(m => m.collectionId);
   }
 
   // Diet Plans

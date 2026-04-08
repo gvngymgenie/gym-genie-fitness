@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, AlertCircle, IndianRupee, CreditCard, UserPlus, Loader2 } from "lucide-react";
@@ -6,9 +6,21 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGri
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { format, addDays, isAfter, isBefore, parseISO, isToday, startOfWeek, eachDayOfInterval } from "date-fns";
-import type { Member, Lead, Attendance } from "@shared/schema";
+import type { Member, Lead, Attendance, Branch } from "@shared/schema";
 
 export default function Dashboard() {
+  const [selectedBranch, setSelectedBranch] = useState("");
+
+  const { data: branches = [], isLoading: loadingBranches } = useQuery<Branch[]>({
+    queryKey: ["/api/branches"],
+  });
+
+  useEffect(() => {
+    if (branches.length > 0 && !selectedBranch) {
+      setSelectedBranch(branches[0].name);
+    }
+  }, [branches, selectedBranch]);
+
   const { data: members = [], isLoading: loadingMembers } = useQuery<Member[]>({
     queryKey: ["/api/members"],
   });
@@ -59,7 +71,11 @@ export default function Dashboard() {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const monthlyTotals: Record<number, number> = {};
     
-    members.forEach(m => {
+    const filteredMembers = selectedBranch 
+      ? members.filter(m => m.branch === selectedBranch)
+      : members;
+    
+    filteredMembers.forEach(m => {
       if (!m.createdAt || !m.amountPaid) return;
       try {
         const date = new Date(m.createdAt);
@@ -72,16 +88,22 @@ export default function Dashboard() {
       name,
       total: monthlyTotals[idx] || 0,
     }));
-  }, [members]);
+  }, [members, selectedBranch]);
 
   const activeMembers = useMemo(() => {
-    return members.filter(m => m.status === "Active").length;
-  }, [members]);
+    const filteredMembers = selectedBranch 
+      ? members.filter(m => m.branch === selectedBranch)
+      : members;
+    return filteredMembers.filter(m => m.status === "Active").length;
+  }, [members, selectedBranch]);
 
   const expiringMembers = useMemo(() => {
     const today = new Date();
     const sevenDaysFromNow = addDays(today, 7);
-    return members.filter(m => {
+    const filteredMembers = selectedBranch 
+      ? members.filter(m => m.branch === selectedBranch)
+      : members;
+    return filteredMembers.filter(m => {
       if (m.status !== "Active" || !m.endDate) return false;
       try {
         const endDate = parseISO(m.endDate);
@@ -90,16 +112,18 @@ export default function Dashboard() {
         return false;
       }
     }).length;
-  }, [members]);
+  }, [members, selectedBranch]);
 
   const todaysRevenue = useMemo(() => {
-    // Use real revenue data from API if available, fallback to mock calculation
+    const filteredMembers = selectedBranch 
+      ? members.filter(m => m.branch === selectedBranch)
+      : members;
+    
     if (todayRevenueData && typeof todayRevenueData.total === 'number') {
       return todayRevenueData.total;
     }
     
-    // Fallback to mock calculation based on member data
-    return members.reduce((sum, m) => {
+    return filteredMembers.reduce((sum, m) => {
       if (!m.createdAt) return sum;
       try {
         const createdDate = new Date(m.createdAt);
@@ -111,16 +135,22 @@ export default function Dashboard() {
       }
       return sum;
     }, 0);
-  }, [members, todayRevenueData]);
+  }, [members, todayRevenueData, selectedBranch]);
 
   const newLeadsCount = useMemo(() => {
-    return leads.filter(l => l.status === "new").length;
-  }, [leads]);
+    const filteredLeads = selectedBranch 
+      ? leads.filter(l => l.branch === selectedBranch)
+      : leads;
+    return filteredLeads.filter(l => l.status === "new").length;
+  }, [leads, selectedBranch]);
 
   const expiringMembersList = useMemo(() => {
     const today = new Date();
     const sevenDaysFromNow = addDays(today, 7);
-    return members.filter(m => {
+    const filteredMembers = selectedBranch 
+      ? members.filter(m => m.branch === selectedBranch)
+      : members;
+    return filteredMembers.filter(m => {
       if (m.status !== "Active" || !m.endDate) return false;
       try {
         const endDate = parseISO(m.endDate);
@@ -129,13 +159,16 @@ export default function Dashboard() {
         return false;
       }
     }).slice(0, 3);
-  }, [members]);
+  }, [members, selectedBranch]);
 
   const newLeadsList = useMemo(() => {
-    return leads.filter(l => l.status === "new").slice(0, 3);
-  }, [leads]);
+    const filteredLeads = selectedBranch 
+      ? leads.filter(l => l.branch === selectedBranch)
+      : leads;
+    return filteredLeads.filter(l => l.status === "new").slice(0, 3);
+  }, [leads, selectedBranch]);
 
-  const isLoading = loadingMembers || loadingLeads;
+  const isLoading = loadingMembers || loadingLeads || loadingBranches;
 
   // Get navigation hook for click functionality
   const [, navigate] = useLocation();
@@ -144,8 +177,25 @@ export default function Dashboard() {
     <Layout>
       <div className="space-y-8">
         <div className="flex flex-col gap-2">
-          <h1 className="text-4xl font-bold font-heading text-foreground" data-testid="heading-dashboard">DASHBOARD</h1>
-          <p className="text-muted-foreground">Welcome back, Admin. Here's what's happening today.</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold font-heading text-foreground" data-testid="heading-dashboard">DASHBOARD</h1>
+              <p className="text-muted-foreground">Welcome back, Admin. Here's what's happening today.</p>
+            </div>
+            {branches.length > 0 && (
+              <select
+                value={selectedBranch}
+                onChange={(e) => setSelectedBranch(e.target.value)}
+                className="px-4 py-2 rounded-md border border-input bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.name}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
 
         {/* Stats Grid */}
@@ -323,7 +373,7 @@ export default function Dashboard() {
                                     </div>
                                     <div>
                                         <p className="font-medium">{lead.firstName} {lead.lastName || ""}</p>
-                                        <p className="text-xs text-muted-foreground">{lead.interestArea || lead.source}</p>
+                                        <p className="text-xs text-muted-foreground">{lead.interestAreas?.[0] || lead.source}</p>
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
