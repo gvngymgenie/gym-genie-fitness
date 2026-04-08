@@ -6,7 +6,7 @@
 import axios from 'axios';
 
 // Supabase project URL for constructing URLs
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://oqadltfzjckgmjmjhsqk.supabase.co';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || 'https://sxvjgevfdzclwyxrqxbe.supabase.co';
 const AVATARS_BUCKET = 'avatars';
 
 class ImageService {
