@@ -8,7 +8,8 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { pushManager, requestNotificationPermission } from "@/lib/pwa";
-import { Dumbbell, Phone, ArrowRight, ArrowLeft, CheckCircle, Bell } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { Dumbbell, Phone, ArrowRight, ArrowLeft, CheckCircle, Bell, Send } from "lucide-react";
 
 type Step = "phone" | "otp";
 
@@ -22,6 +23,12 @@ export default function MemberLogin() {
   const { loginMember } = useAuth();
   const [, navigate] = useLocation();
 
+  const formatPhoneForWhatsApp = (phone: string) => {
+    const cleanPhone = phone.replace(/[^\d]/g, '');
+    if (cleanPhone.startsWith('91')) return cleanPhone;
+    return '91' + cleanPhone;
+  };
+
   const handleSendOtp = async () => {
     if (phone.length < 10) {
       toast({
@@ -34,31 +41,43 @@ export default function MemberLogin() {
 
     setIsLoading(true);
     try {
-      // Request OneSignal notification permission first
-      console.log('Requesting OneSignal notification permission...');
-      const permission = await requestNotificationPermission();
-
-      if (permission !== 'granted') {
-        console.warn('OneSignal notification permission denied');
-      }
-
-      const res = await fetch("/api/auth/member/send-otp", {
+      // First, call the API to store OTP in database
+      const otpResponse = await fetch("/api/auth/member/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone }),
       });
 
-      const data = await res.json();
+      const otpData = await otpResponse.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to send OTP");
+      if (!otpResponse.ok) {
+        throw new Error(otpData.error || "Failed to generate OTP");
       }
 
-      setDemoOtp(data.demoOtp || null);
+      const demoOtp = otpData.demoOtp;
+
+      // Then send OTP via WhatsApp
+      const formattedPhone = formatPhoneForWhatsApp(phone);
+      const message = `Your verification code is: ${demoOtp}\n\nThis code will expire in 5 minutes.`;
+      
+      const waRes = await apiRequest("POST", "/api/whatsapp/send", {
+        recipientType: "individual",
+        phone: formattedPhone,
+        recipientName: "Member",
+        message: message,
+      });
+
+      const waData = await waRes.json();
+
+      if (!waRes.ok || !waData.success) {
+        console.warn("WhatsApp send failed, but OTP is stored:", waData.message);
+      }
+
+      setDemoOtp(demoOtp);
       setStep("otp");
       toast({
-        title: "OTP Sent",
-        description: "Please check your messages for the verification code.",
+        title: "OTP Sent via WhatsApp",
+        description: "Please check your WhatsApp for the verification code.",
       });
     } catch (error: any) {
       toast({
@@ -152,11 +171,11 @@ export default function MemberLogin() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {demoOtp && (
-            <div className="text-sm text-muted-foreground text-center">
-              Demo OTP: {demoOtp}
-            </div>
-          )}
+            {/* {demoOtp && (
+              <div className="text-sm text-muted-foreground text-center">
+                Demo OTP: {demoOtp}
+              </div>
+            )} */}
           {step === "phone" ? (
             <div className="space-y-4">
               <div className="space-y-2">
@@ -176,13 +195,13 @@ export default function MemberLogin() {
                 </div>
               </div>
               <Button 
-                className="w-full" 
+                className="w-full h-11 bg-[#25D366] hover:bg-[#20bd59] text-white font-bold"
                 onClick={handleSendOtp}
                 disabled={isLoading || phone.length < 10}
                 data-testid="button-send-otp"
               >
-                {isLoading ? "Sending..." : "Send OTP"}
-                <ArrowRight className="ml-2 h-4 w-4" />
+                {isLoading ? "Sending..." : "Send OTP via WhatsApp"}
+                <Send className="ml-2 h-4 w-4" />
               </Button>
               <div className="text-center mt-4">
                 <a 

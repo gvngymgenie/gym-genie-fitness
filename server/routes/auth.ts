@@ -1,6 +1,8 @@
 import { Express } from "express";
 import { storage } from "../storage";
+import { db } from "../db";
 import { z } from "zod";
+import { sendWhatsAppOTP, isWhatsAppConfigured } from "../services/whatsapp";
 
 const loginSchema = z.object({
   username: z.string().min(1),
@@ -186,7 +188,17 @@ export function registerAuthRoutes(app: Express) {
       // Store OTP in database
       const otpRecord = await storage.createOtp({ phone, otp, expiresAt });
 
-      // Send push notification via OneSignal
+      // Send OTP via WhatsApp
+      console.log(`[OTP] Sending OTP via WhatsApp to ${phone}...`);
+      const whatsappResult = await sendWhatsAppOTP(phone, otp);
+      
+      if (whatsappResult.success) {
+        console.log(`[OTP] ✅ WhatsApp OTP sent successfully, messageId: ${whatsappResult.messageId}`);
+      } else {
+        console.warn(`[OTP] ⚠️ WhatsApp failed: ${whatsappResult.error}`);
+      }
+
+      // Also send push notification via OneSignal as backup
       console.log(`[OTP] Processing OTP for member ${member.id}`);
       
       try {

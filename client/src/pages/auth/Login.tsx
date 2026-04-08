@@ -136,46 +136,6 @@ export default function Login() {
               {isLoading ? "Logging in..." : "Login"}
             </Button>
             
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Or quick demo</span>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="role">Demo Login (No account needed)</Label>
-              <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger data-testid="select-role">
-                  <SelectValue placeholder="Select role to demo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin (Full Access)</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="trainer">Trainer</SelectItem>
-                  <SelectItem value="staff">Staff</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <Button 
-              type="button"
-              variant="outline" 
-              className="w-full" 
-              disabled={isLoading}
-              onClick={() => {
-                setUsername("");
-                setPassword("");
-                const form = document.querySelector('form');
-                if (form) form.requestSubmit();
-              }}
-              data-testid="button-demo-login"
-            >
-              Demo as {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}
-            </Button>
-            
             <div className="text-center pt-4 border-t border-border mt-4">
               <p className="text-sm text-muted-foreground mb-2">Are you a gym member?</p>
               <Link href="/member/login">

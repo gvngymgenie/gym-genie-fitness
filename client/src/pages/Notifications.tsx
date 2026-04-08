@@ -193,6 +193,13 @@ export default function Notifications() {
 
   const waSendMutation = useMutation({
     mutationFn: async (data: WhatsAppSendForm) => {
+      // Format phone number with 91 prefix for WhatsApp
+      const formatPhoneForWhatsApp = (phone: string) => {
+        const cleanPhone = phone.replace(/[^\d]/g, '');
+        if (cleanPhone.startsWith('91')) return cleanPhone;
+        return '91' + cleanPhone;
+      };
+
       // When multiple members are selected, send individually to each
       if (data.recipientType === "individual" && data.memberIds.length > 1) {
         const results = [];
@@ -202,7 +209,7 @@ export default function Notifications() {
             const res = await apiRequest("POST", "/api/whatsapp/send", {
               recipientType: "individual",
               memberIds: [memberId],
-              phone: member.phone,
+              phone: formatPhoneForWhatsApp(member.phone),
               recipientName: `${member.firstName}${member.lastName ? ' ' + member.lastName : ''}`,
               message: data.message,
             });
@@ -218,7 +225,7 @@ export default function Notifications() {
       const res = await apiRequest("POST", "/api/whatsapp/send", {
         recipientType: data.recipientType,
         memberIds: data.memberIds.length > 0 ? data.memberIds : undefined,
-        phone: data.phone || undefined,
+        phone: data.phone ? formatPhoneForWhatsApp(data.phone) : undefined,
         recipientName: data.recipientName || undefined,
         message: data.message,
       });
