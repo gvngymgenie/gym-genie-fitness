@@ -582,6 +582,26 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMember(id: string): Promise<boolean> {
     console.log("Deleting member with ID:", id);
+
+    // Get member to find phone number for OTP cleanup
+    const member = await this.getMember(id);
+
+    // Delete related records that don't have CASCADE
+    await drizzleDb.delete(schema.payments).where(eq(schema.payments.memberId, id));
+    await drizzleDb.delete(schema.memberCredits).where(eq(schema.memberCredits.memberId, id));
+    await drizzleDb.delete(schema.creditTransactions).where(eq(schema.creditTransactions.memberId, id));
+    await drizzleDb.delete(schema.memberMeasurements).where(eq(schema.memberMeasurements.memberId, id));
+    await drizzleDb.delete(schema.bmiRecords).where(eq(schema.bmiRecords.memberId, id));
+    await drizzleDb.delete(schema.attendance).where(eq(schema.attendance.memberId, id));
+    await drizzleDb.delete(schema.workoutProgramAssignments).where(eq(schema.workoutProgramAssignments.memberId, id));
+    await drizzleDb.delete(schema.dietPlanAssignments).where(eq(schema.dietPlanAssignments.memberId, id));
+
+    // Delete member OTP records by phone
+    if (member?.phone) {
+      await drizzleDb.delete(schema.memberOtps).where(eq(schema.memberOtps.phone, member.phone));
+    }
+
+    // Delete the member
     const result = await drizzleDb.delete(schema.members)
       .where(eq(schema.members.id, id))
       .returning();
