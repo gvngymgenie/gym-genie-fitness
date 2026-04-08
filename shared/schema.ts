@@ -319,6 +319,8 @@ export const workoutPrograms = pgTable("workout_programs", {
   intensity: integer("intensity").notNull().default(5),
   goal: text("goal").default("Hypertrophy"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Legacy column - still exists for backward compatibility but junction table is preferred
+  collectionId: varchar("collection_id"),
 });
 
 export const insertWorkoutProgramSchema = createInsertSchema(workoutPrograms).omit({
@@ -838,6 +840,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   scheduledNotifications: many(scheduledNotifications),
   revenueTransactions: many(revenueTransactions),
   revenueSummary: many(revenueSummary),
+  workoutCollectionMembers: many(workoutCollectionMembers),
 }));
 
 export const membersRelations = relations(members, ({ one, many }) => ({
@@ -853,6 +856,7 @@ export const membersRelations = relations(members, ({ one, many }) => ({
   trainerBookings: many(trainerBookings),
   trainerFeedback: many(trainerFeedback),
   revenueTransactions: many(revenueTransactions),
+  workoutCollectionMembers: many(workoutCollectionMembers),
 }));
 
 export const revenueTransactionsRelations = relations(revenueTransactions, ({ one }) => ({
@@ -974,6 +978,65 @@ export const updateTrainingTypeSchema = createInsertSchema(trainingTypes).omit({
 export type InsertTrainingType = z.infer<typeof insertTrainingTypeSchema>;
 export type UpdateTrainingType = z.infer<typeof updateTrainingTypeSchema>;
 export type TrainingType = typeof trainingTypes.$inferSelect;
+
+// Workout Collections
+export const workoutCollections = pgTable("workout_collections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertWorkoutCollectionSchema = createInsertSchema(workoutCollections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateWorkoutCollectionSchema = createInsertSchema(workoutCollections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).partial();
+
+export type InsertWorkoutCollection = z.infer<typeof insertWorkoutCollectionSchema>;
+export type UpdateWorkoutCollection = z.infer<typeof updateWorkoutCollectionSchema>;
+export type WorkoutCollection = typeof workoutCollections.$inferSelect;
+
+// Workout Collections Relations
+export const workoutCollectionsRelations = relations(workoutCollections, ({ many }) => ({
+  workoutCollectionMembers: many(workoutCollectionMembers),
+}));
+
+// Workout Collection Members (Junction Table)
+export const workoutCollectionMembers = pgTable("workout_collection_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workoutId: varchar("workout_id").notNull().references(() => workoutPrograms.id, { onDelete: "cascade" }),
+  collectionId: varchar("collection_id").notNull().references(() => workoutCollections.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertWorkoutCollectionMemberSchema = createInsertSchema(workoutCollectionMembers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertWorkoutCollectionMember = z.infer<typeof insertWorkoutCollectionMemberSchema>;
+export type WorkoutCollectionMember = typeof workoutCollectionMembers.$inferSelect;
+
+// Workout Collection Members Relations
+export const workoutCollectionMembersRelations = relations(workoutCollectionMembers, ({ one }) => ({
+  workout: one(workoutPrograms, {
+    fields: [workoutCollectionMembers.workoutId],
+    references: [workoutPrograms.id],
+  }),
+  collection: one(workoutCollections, {
+    fields: [workoutCollectionMembers.collectionId],
+    references: [workoutCollections.id],
+  }),
+}));
 
 // Member Credits - AI credit balance tracking for members
 export const memberCredits = pgTable("member_credits", {

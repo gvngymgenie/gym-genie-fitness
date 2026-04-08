@@ -44,6 +44,7 @@ export default function MemberProfile() {
   });
   
   const [openTrainer, setOpenTrainer] = useState(false);
+  const [openBranch, setOpenBranch] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [activeTab, setActiveTab] = useState("memberships");
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -56,6 +57,16 @@ export default function MemberProfile() {
       if (!res.ok) return [];
       const staff = await res.json();
       return staff.filter((s: any) => s.role === "trainer");
+    },
+  });
+
+  // Fetch branches
+  const { data: branches = [] } = useQuery({
+    queryKey: ["/api/branches"],
+    queryFn: async () => {
+      const res = await fetch("/api/branches");
+      if (!res.ok) return [];
+      return res.json();
     },
   });
 
@@ -660,6 +671,7 @@ export default function MemberProfile() {
                             className="h-full w-full object-cover"
                           />
                         )}
+                        
                       </div>
                       <Button
                         type="button"
@@ -897,6 +909,54 @@ export default function MemberProfile() {
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Address</p>
                       <p className="text-sm">{member.address || "Not set"}</p>
                     </div>
+                      <div className="text-left">
+                        <Sheet open={openBranch} onOpenChange={setOpenBranch}>
+                          <SheetTrigger asChild>
+                            <div className="group cursor-pointer">
+                              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1 flex items-center justify-between">
+                                Branch <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </p>
+                              <p className="text-sm font-semibold text-primary underline decoration-dotted underline-offset-4">
+                                {member.branch || "Not set"}
+                              </p>
+                            </div>
+                          </SheetTrigger>
+                          <SheetContent className="sm:max-w-[425px] bg-card border-border shadow-2xl">
+                            <SheetHeader>
+                              <SheetTitle className="text-xl font-bold font-heading text-primary">Change Branch</SheetTitle>
+                            </SheetHeader>
+                            <form className="space-y-6 pt-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="branch" className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Select Branch</Label>
+                                <Select
+                                  defaultValue={member.branch || ""}
+                                  onValueChange={async (branchName) => {
+                                    await apiRequest("PATCH", `/api/members/${memberId}`, { branch: branchName });
+                                    queryClient.invalidateQueries({ queryKey: ["/api/members", memberId] });
+                                    toast({ title: "Branch updated successfully" });
+                                    setOpenBranch(false);
+                                  }}
+                                >
+                                  <SelectTrigger className="bg-background border-border">
+                                    <SelectValue placeholder="Select a branch" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {branches.map((b: any) => (
+                                      <SelectItem key={b.id} value={b.name}>
+                                        {b.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                                <Button type="button" variant="outline" onClick={() => setOpenBranch(false)}>Cancel</Button>
+                                <Button type="button" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setOpenBranch(false)}>Close</Button>
+                              </div>
+                            </form>
+                          </SheetContent>
+                        </Sheet>
+                      </div>
                     <div className="text-left">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-2">Interest Areas</p>
                       <div className="flex flex-wrap gap-2">

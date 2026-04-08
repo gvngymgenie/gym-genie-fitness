@@ -253,6 +253,7 @@ const ProfilePicture = ({ member, memberName }: { member: Member; memberName?: s
 export default function Members() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPlan, setFilterPlan] = useState("all");
+  const [filterBranch, setFilterBranch] = useState("all");
   const [open, setOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
@@ -526,7 +527,8 @@ export default function Members() {
     const matchesSearch = fullName.includes(searchQuery.toLowerCase()) || 
                           (member.email?.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesPlan = filterPlan === "all" || member.plan === filterPlan;
-    return matchesSearch && matchesPlan;
+    const matchesBranch = filterBranch === "all" || member.branch === filterBranch;
+    return matchesSearch && matchesPlan && matchesBranch;
   });
 
   const getStatusColor = (status: string) => {
@@ -540,13 +542,19 @@ export default function Members() {
   };
 
   const uniquePlans = Array.from(new Set(members.map(m => m.plan)));
+  const branchCount = filterBranch === "all"
+    ? members.length
+    : members.filter(m => m.branch === filterBranch).length;
 
   return (
     <Layout>
       <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-2">
-            <h1 className="text-4xl font-bold font-heading text-foreground uppercase tracking-tight">MEMBERS</h1>
+            <div className="flex items-baseline gap-3">
+              <h1 className="text-4xl font-bold font-heading text-foreground uppercase tracking-tight">MEMBERS</h1>
+              <div className="text-lg font-semibold text-primary">{filterBranch === "all" ? "All Branches" : filterBranch} ({branchCount})</div>
+            </div>
             <p className="text-muted-foreground">Manage all gym members and their subscriptions.</p>
           </div>
           <div className="flex gap-2">
@@ -583,6 +591,17 @@ export default function Members() {
               <option value="all">All Plans</option>
               {uniquePlans.map(plan => (
                 <option key={plan} value={plan}>{plan}</option>
+              ))}
+            </select>
+
+            <select
+              className="px-4 py-2 rounded-lg border border-border bg-background text-foreground hover:border-primary transition-colors font-bold uppercase tracking-tighter text-xs"
+              value={filterBranch}
+              onChange={(e) => setFilterBranch(e.target.value)}
+            >
+              <option value="all">All Branches</option>
+              {branches.map((b: any) => (
+                <option key={b.id} value={b.name}>{b.name}</option>
               ))}
             </select>
           </div>
@@ -640,6 +659,10 @@ export default function Members() {
                             <span className="text-muted-foreground uppercase font-bold text-[10px] tracking-widest">Expires:</span>
                             <span className="font-mono text-xs font-bold">{member.endDate}</span>
                           </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground uppercase font-bold text-[10px] tracking-widest">Branch:</span>
+                            <span className="text-sm font-semibold">{member.branch || "Not set"}</span>
+                          </div>
                           {/* <div className="flex items-center justify-between">
                             <span className="text-muted-foreground flex items-center gap-1 uppercase font-bold text-[10px] tracking-widest">
                               <Brain className="h-3 w-3" /> Credits:
@@ -672,6 +695,7 @@ export default function Members() {
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Member</th>
                       <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Plan</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Branch</th>
                       <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</th>
                       {/* <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Credits</th> */}
                       <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Expires</th>
@@ -693,6 +717,7 @@ export default function Members() {
                           </div>
                         </td>
                         <td className="px-4 py-4 text-sm font-medium">{member.plan}</td>
+                        <td className="px-4 py-4 text-sm">{member.branch || "Not set"}</td>
                         <td className="px-4 py-4">
                           <Badge className={`${getStatusColor(member.status)} border`}>{member.status}</Badge>
                         </td>

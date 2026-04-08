@@ -34,6 +34,7 @@ export function registerWorkoutRoutes(app: Express) {
         equipment: req.body.equipment,
         intensity: req.body.intensity || 5,
         goal: req.body.goal || 'Hypertrophy',
+        collectionIds: req.body.collectionIds || [],
       };
 
       const program = await storage.createWorkoutProgram(programData as any);
@@ -58,6 +59,7 @@ export function registerWorkoutRoutes(app: Express) {
       if (req.body.equipment !== undefined) updates.equipment = req.body.equipment;
       if (req.body.intensity !== undefined) updates.intensity = req.body.intensity;
       if (req.body.goal !== undefined) updates.goal = req.body.goal;
+      if (req.body.collectionIds !== undefined) updates.collectionIds = req.body.collectionIds;
 
       const program = await storage.updateWorkoutProgram(req.params.id, updates);
       if (!program) {

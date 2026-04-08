@@ -9,6 +9,7 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { WorkoutProgram, Member } from "@shared/schema";
+import { MultiSelectDropdown } from "@/components/ui/multi-select-dropdown";
 
 type Exercise = {
   name: string;
@@ -31,6 +32,7 @@ type ProgramForm = {
   equipmentInput: string;
   customWorkoutPlan: boolean;
   memberId: string;
+  collectionIds: string[];
 };
 
 interface CreateProgramSheetProps {
@@ -54,6 +56,7 @@ const defaultForm: ProgramForm = {
   equipmentInput: "",
   customWorkoutPlan: false,
   memberId: "",
+  collectionIds: [],
 };
 
 export function CreateProgramSheet({ open, onOpenChange, editingProgram, initialData, preselectedMemberId, preselectCustomWorkout }: CreateProgramSheetProps) {
@@ -64,6 +67,16 @@ export function CreateProgramSheet({ open, onOpenChange, editingProgram, initial
   // Fetch members for the dropdown
   const { data: members = [] } = useQuery<Member[]>({
     queryKey: ["/api/members"],
+  });
+
+  // Fetch workout collections for dropdown
+  interface WorkoutCollection {
+    id: string;
+    name: string;
+    description?: string | null;
+  }
+  const { data: collections = [] } = useQuery<WorkoutCollection[]>({
+    queryKey: ["/api/options/workout-collections"],
   });
 
   // Reset form when opening/closing or when editingProgram/initialData changes
@@ -83,6 +96,7 @@ export function CreateProgramSheet({ open, onOpenChange, editingProgram, initial
           equipmentInput: (editingProgram.equipment as string[]).join(", "),
           customWorkoutPlan: (editingProgram as any).customWorkoutPlan || false,
           memberId: (editingProgram as any).memberId || "",
+          collectionIds: (editingProgram as any).collectionIds || [],
         });
       } else if (initialData) {
         // Create mode with initial data - pre-populate form but don't treat as editing
@@ -102,6 +116,7 @@ export function CreateProgramSheet({ open, onOpenChange, editingProgram, initial
               : "",
           customWorkoutPlan: preselectCustomWorkout ?? true,
           memberId: preselectedMemberId || "",
+          collectionIds: [],
         });
       } else {
         // Create mode - empty form with preselected values
@@ -148,7 +163,21 @@ export function CreateProgramSheet({ open, onOpenChange, editingProgram, initial
 
   const handleProgramSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation - check if at least one collection is selected
+    if (programForm.collectionIds.length === 0) {
+      toast({ title: "Error", description: "Please select at least one workout collection", variant: "destructive" });
+      return;
+    }
+    
     const equipmentArray = programForm.equipmentInput.split(",").map(e => e.trim()).filter(Boolean);
+    
+    // Convert collection names to IDs
+    const collectionIds = programForm.collectionIds.map(name => {
+      const collection = collections.find((c: any) => c.name === name);
+      return collection?.id || null;
+    }).filter(Boolean);
+    
     const data = {
       name: programForm.name,
       day: programForm.day,
@@ -160,6 +189,7 @@ export function CreateProgramSheet({ open, onOpenChange, editingProgram, initial
       equipment: equipmentArray,
       customWorkoutPlan: programForm.customWorkoutPlan,
       memberId: programForm.customWorkoutPlan && programForm.memberId ? programForm.memberId : null,
+      collectionIds,
     };
 
     if (editingProgram) {
@@ -315,6 +345,19 @@ export function CreateProgramSheet({ open, onOpenChange, editingProgram, initial
                   </Select>
                 </div>
               )}
+
+              {/* Workout Collections - Mandatory Multi-Select */}
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Workout Collections <span className="text-destructive">*</span>
+                </Label>
+                <MultiSelectDropdown
+                  value={programForm.collectionIds}
+                  onValueChange={(ids) => setProgramForm({ ...programForm, collectionIds: ids })}
+                  options={(collections as any[])?.map((c: any) => c.name) || []}
+                  placeholder="Select collections (required)"
+                />
+              </div>
 
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Exercises</Label>

@@ -2,7 +2,7 @@ import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dumbbell, Utensils, ChevronRight, Plus, Settings, Clock, Trophy, Trash2, ListPlus, Loader2, User } from "lucide-react";
+import { Dumbbell, Utensils, ChevronRight, Plus, Settings, Clock, Trophy, Trash2, ListPlus, Loader2, User, ChevronDown, ChevronUp } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -36,8 +36,44 @@ export default function Workouts() {
   const [openAssignDiet, setOpenAssignDiet] = useState(false);
   const [assigningDiet, setAssigningDiet] = useState<DietPlan | null>(null);
   const [difficultyFilter, setDifficultyFilter] = useState<string>("All");
+  const [collectionFilter, setCollectionFilter] = useState<string>("All");
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [expandedDietCards, setExpandedDietCards] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const toggleCardExpand = (programId: string) => {
+    setExpandedCards(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(programId)) {
+        newSet.delete(programId);
+      } else {
+        newSet.add(programId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleDietCardExpand = (planId: string) => {
+    setExpandedDietCards(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(planId)) {
+        newSet.delete(planId);
+      } else {
+        newSet.add(planId);
+      }
+      return newSet;
+    });
+  };
+
+  interface WorkoutCollection {
+    id: string;
+    name: string;
+  }
+
+  const { data: workoutCollections = [] } = useQuery<WorkoutCollection[]>({
+    queryKey: ["/api/options/workout-collections"],
+  });
 
   const [programForm, setProgramForm] = useState({
     name: "",
@@ -72,6 +108,15 @@ export default function Workouts() {
     queryKey: ["/api/diet-plans"],
   });
 
+  interface WorkoutCollectionMember {
+    workoutId: string;
+    collectionId: string;
+  }
+
+  const { data: workoutCollectionMembers = [] } = useQuery<WorkoutCollectionMember[]>({
+    queryKey: ["/api/options/workout-collection-members"],
+  });
+
   const activeMembers = useMemo(() => members.filter(m => m.status === "Active"), [members]);
 
   // Filter out custom workout plans - only show general programs
@@ -79,9 +124,18 @@ export default function Workouts() {
   const memberDiets = dietPlans.filter(p => !p.customDiet);
 
   const filteredPrograms = useMemo(() => {
-    if (difficultyFilter === "All") return memberPrograms;
-    return memberPrograms.filter(p => p.difficulty === difficultyFilter);
-  }, [memberPrograms, difficultyFilter]);
+    let filtered = memberPrograms;
+    if (difficultyFilter !== "All") {
+      filtered = filtered.filter(p => p.difficulty === difficultyFilter);
+    }
+    if (collectionFilter !== "All") {
+      filtered = filtered.filter(p => {
+        const programId = p.id;
+        return workoutCollectionMembers.some(m => m.workoutId === programId && m.collectionId === collectionFilter);
+      });
+    }
+    return filtered;
+  }, [memberPrograms, difficultyFilter, collectionFilter, workoutCollectionMembers]);
 
   const totalMacros = useMemo(() => memberDiets.reduce((acc, meal) => ({
     protein: acc.protein + meal.protein,
@@ -378,8 +432,9 @@ export default function Workouts() {
             </TabsList>
 
             <TabsContent value="programs" className="space-y-6 animate-in fade-in">
-              <div className="flex justify-between items-center align-center w-full">
+<div className="flex justify-between items-center align-center w-full">
                 <div className="flex flex-wrap gap-2">
+                  <span className="text-sm text-muted-foreground py-2">Difficulty:</span>
                 {["All", "Beginner", "Intermediate", "Advanced"].map((level) => (
                   <button
                     key={level}
@@ -394,6 +449,20 @@ export default function Workouts() {
                     {level}
                   </button>
                 ))}
+                <div className="flex items-center gap-2 ml-4">
+                  <span className="text-sm text-muted-foreground py-2">Collection:</span>
+                  <Select value={collectionFilter} onValueChange={setCollectionFilter}>
+                    <SelectTrigger className="w-48 h-10 bg-background border-border" data-testid="filter-collection">
+                      <SelectValue placeholder="All Collections" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Collections</SelectItem>
+                      {workoutCollections.map((col) => (
+                        <SelectItem key={col.id} value={col.id}>{col.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               {/* <Button   className="gap-2 border-accent/30 text-accent hover:bg-accent/10" onClick={() => setOpenCreateDiet(true)} data-testid="button-create-diet"> */}
                 <Button variant="outline" className="gap-2 text-primary hover:bg-primary/10 border-primary/30" onClick={() => setOpenCreate(true)} data-testid="button-create-program">
@@ -404,15 +473,27 @@ export default function Workouts() {
               <div className="space-y-4">
                   {filteredPrograms.length === 0 ? (
                     <Card className="bg-card/50 backdrop-blur-sm p-8 text-center">
-                      <p className="text-muted-foreground">{difficultyFilter === "All" ? "No workout programs yet. Create one to get started." : `No ${difficultyFilter} programs found.`}</p>
+                      <p className="text-muted-foreground">
+                        {difficultyFilter === "All" && collectionFilter === "All" 
+                          ? "No workout programs yet. Create one to get started." 
+                          : difficultyFilter !== "All" && collectionFilter !== "All"
+                            ? `No ${difficultyFilter} programs found in this collection.`
+                            : collectionFilter !== "All"
+                              ? "No workout programs in this collection."
+                              : `No ${difficultyFilter} programs found.`}
+                      </p>
                     </Card>
                   ) : (
                     filteredPrograms.map((program) => {
                       const exercises = program.exercises as Exercise[];
                       const equipment = program.equipment as string[];
+                      const isExpanded = expandedCards.has(program.id);
                       return (
                         <Card key={program.id} className="bg-card/50 backdrop-blur-sm border-t-4 border-t-primary hover:shadow-lg transition-all" data-testid={`card-program-${program.id}`}>
-                          <CardHeader className="pb-3">
+                          <CardHeader 
+                            className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                            onClick={() => toggleCardExpand(program.id)}
+                          >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 <Dumbbell className="h-5 w-5 text-primary" />
@@ -426,9 +507,11 @@ export default function Workouts() {
                                 <Badge className="bg-accent/20 text-accent border-accent/30 border">
                                   Level {program.intensity}/10
                                 </Badge>
+                                {isExpanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
                               </div>
                             </div>
                           </CardHeader>
+                          {isExpanded && (
                           <CardContent className="space-y-4">
                             <div className="grid grid-cols-2 gap-3 py-3 border-t border-b border-border">
                               <div className="flex items-center gap-2 text-sm">
@@ -470,17 +553,18 @@ export default function Workouts() {
                             </div>
 
                             <div className="flex gap-2 pt-2">
-                              <Button className="flex-1 gap-2 h-10 uppercase font-bold text-xs tracking-wider" size="sm" onClick={() => handleEditProgram(program)} data-testid={`button-edit-program-${program.id}`}>
+                              <Button className="flex-1 gap-2 h-10 uppercase font-bold text-xs tracking-wider" size="sm" onClick={(e) => { e.stopPropagation(); handleEditProgram(program); }} data-testid={`button-edit-program-${program.id}`}>
                                 <Settings className="h-4 w-4" /> Edit Program
                               </Button>
-                              <Button variant="outline" className="flex-1 gap-2 h-10 uppercase font-bold text-xs tracking-wider border-primary/50 text-primary" size="sm" onClick={() => handleAssignProgram(program)} data-testid={`button-assign-program-${program.id}`}>
+                              <Button variant="outline" className="flex-1 gap-2 h-10 uppercase font-bold text-xs tracking-wider border-primary/50 text-primary" size="sm" onClick={(e) => { e.stopPropagation(); handleAssignProgram(program); }} data-testid={`button-assign-program-${program.id}`}>
                                 <User className="h-4 w-4" /> Assign to Member
                               </Button>
-                              <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => deleteProgramMutation.mutate(program.id)} data-testid={`button-delete-program-${program.id}`}>
+                              <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); deleteProgramMutation.mutate(program.id); }} data-testid={`button-delete-program-${program.id}`}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </CardContent>
+                          )}
                         </Card>
                       );
                     })
@@ -502,19 +586,24 @@ export default function Workouts() {
                   ) : (
                     memberDiets.map((plan) => {
                       const foods = plan.foods as string[];
+                      const isExpanded = expandedDietCards.has(plan.id);
                       return (
                         <Card key={plan.id} className="bg-card/50 backdrop-blur-sm hover:shadow-lg transition-all border-l-4 border-l-accent/50" data-testid={`card-diet-${plan.id}`}>
-                          <CardHeader className="pb-3">
+                          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => toggleDietCardExpand(plan.id)}>
                             <div className="flex items-center justify-between">
                               <h3 className="font-bold text-lg flex items-center gap-2 text-foreground tracking-tight uppercase">
                                 <Utensils className="h-5 w-5 text-accent" />
                                 {plan.meal}
                               </h3>
-                              <span className="text-sm font-mono text-accent bg-accent/10 px-3 py-1 rounded-full font-bold">
-                                {plan.calories} kcal
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-mono text-accent bg-accent/10 px-3 py-1 rounded-full font-bold">
+                                  {plan.calories} kcal
+                                </span>
+                                {isExpanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                              </div>
                             </div>
                           </CardHeader>
+                          {isExpanded && (
                           <CardContent className="space-y-4">
                             <div className="flex flex-wrap gap-2">
                               {foods.map((food, i) => (
@@ -541,17 +630,18 @@ export default function Workouts() {
                               </div>
                             )}
                             <div className="flex gap-2">
-                              <Button variant="outline" className="flex-1 gap-2 h-10 border-accent/30 text-accent hover:bg-accent/10 uppercase font-bold tracking-widest text-xs" size="sm" onClick={() => handleEditMeal(plan)} data-testid={`button-edit-diet-${plan.id}`}>
+                              <Button variant="outline" className="flex-1 gap-2 h-10 border-accent/30 text-accent hover:bg-accent/10 uppercase font-bold tracking-widest text-xs" size="sm" onClick={(e) => { e.stopPropagation(); handleEditMeal(plan); }} data-testid={`button-edit-diet-${plan.id}`}>
                                 <Settings className="h-4 w-4" /> Edit Meal
                               </Button>
-                              <Button variant="outline" className="flex-1 gap-2 h-10 border-primary/50 text-primary hover:bg-primary/10 uppercase font-bold tracking-widest text-xs" size="sm" onClick={() => { setAssigningDiet(plan); setOpenAssignDiet(true); }} data-testid={`button-assign-diet-${plan.id}`}>
+                              <Button variant="outline" className="flex-1 gap-2 h-10 border-primary/50 text-primary hover:bg-primary/10 uppercase font-bold tracking-widest text-xs" size="sm" onClick={(e) => { e.stopPropagation(); setAssigningDiet(plan); setOpenAssignDiet(true); }} data-testid={`button-assign-diet-${plan.id}`}>
                                 <User className="h-4 w-4" /> Assign
                               </Button>
-                              <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => deleteDietMutation.mutate(plan.id)} data-testid={`button-delete-diet-${plan.id}`}>
+                              <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); deleteDietMutation.mutate(plan.id); }} data-testid={`button-delete-diet-${plan.id}`}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </CardContent>
+                          )}
                         </Card>
                       );
                     })

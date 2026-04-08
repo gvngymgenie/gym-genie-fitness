@@ -120,6 +120,7 @@ export type Attendance = schema.Attendance;
 export type WorkoutProgram = schema.WorkoutProgram;
 export type DietPlan = schema.DietPlan;
 export type WorkoutProgramAssignment = schema.WorkoutProgramAssignment;
+export type WorkoutCollection = schema.WorkoutCollection;
 export type DietPlanAssignment = schema.DietPlanAssignment;
 export type Notification = {
   id: string;
@@ -286,6 +287,7 @@ function transformWorkoutProgramToCamelCase(program: any): WorkoutProgram {
   return {
     id: program.id,
     memberId: program.memberId,
+    collectionId: program.collectionId ?? null,
     day: program.day,
     name: program.name,
     difficulty: program.difficulty,
