@@ -134,9 +134,19 @@ function DatePickerWithNav({ date, onDateChange, placeholder = "dd-mm-yyyy", tes
 }
 
 const sourceOptions = ["Walk-in", "Instagram", "Facebook", "Referral", "Website", "Other"];
-const interestOptions = ["Weight Loss", "Muscle Gain", "Bodybuilding", "Powerlifting", "Crossfit", "Cardio", "Yoga", "General Fitness"];
-const healthOptions = ["None", "Asthma", "Blood Pressure", "Diabetes", "Previous Injury", "Other"];
 const paymentMethods = ["Cash", "UPI / GPay", "Card", "Bank Transfer"];
+
+interface InterestOption {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+
+interface HealthOption {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
 
 // Memoized profile picture loader to prevent infinite re-renders
 const useProfilePictureLoader = (member: Member) => {
@@ -298,6 +308,24 @@ export default function Members() {
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
   });
+
+  const { data: interestOptionsFromApi = [] } = useQuery<InterestOption[]>({
+    queryKey: ["/api/options/interests"],
+  });
+
+  const { data: healthOptionsFromApi = [] } = useQuery<HealthOption[]>({
+    queryKey: ["/api/options/health"],
+  });
+
+  const interestOptions = useMemo(() => 
+    interestOptionsFromApi.filter((opt: InterestOption) => opt.isActive).map((opt: InterestOption) => opt.name),
+    [interestOptionsFromApi]
+  );
+
+  const healthOptions = useMemo(() => 
+    healthOptionsFromApi.filter((opt: HealthOption) => opt.isActive).map((opt: HealthOption) => opt.name),
+    [healthOptionsFromApi]
+  );
 
   // Fetch member credits for all members
   const { data: allMemberCredits = [], isLoading: creditsLoading, error: creditsError } = useQuery({
