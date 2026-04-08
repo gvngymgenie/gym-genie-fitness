@@ -37,6 +37,14 @@ app.use((req, res, next) => {
   else next();
 });
 
+// Prevent caching on all API routes
+app.use("/api", (req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  next();
+});
+
 // Lightweight logger
 function log(message: string, source: string = "express") {
   const t = new Date().toLocaleTimeString("en-US", {

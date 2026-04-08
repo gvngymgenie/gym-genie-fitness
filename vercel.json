@@ -1,5 +1,149 @@
 {
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/public",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/OneSignalSDKWorker.js(.*)",
+      "destination": "/OneSignalSDKWorker.js"
+    },
+    {
+      "source": "/sw.js(.*)",
+      "destination": "/sw.js"
+    },
+    {
+      "source": "/OneSignalSDK.sw.js(.*)",
+      "destination": "/OneSignalSDK.sw.js"
+    },
+    {
+      "source": "/manifest.json(.*)",
+      "destination": "/manifest.json"
+    },
+    {
+      "source": "/(.*).js",
+      "destination": "/$1.js"
+    },
+    {
+      "source": "/(.*).css",
+      "destination": "/$1.css"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+        },
+        {
+          "key": "Pragma",
+          "value": "no-cache"
+        },
+        {
+          "key": "Expires",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/uploads/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/OneSignalSDKWorker.js",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
+    },
+    {
+      "source": "/OneSignalSDKWorker.js(.*)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        }
+      ]
+    },
+    {
+      "source": "/OneSignalSDK.sw.js",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
+    },
+    {
+      "source": "/OneSignalSDK.sw.js(.*)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
+    }
+  ],
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 60
+    }
+  },
+  "env": {
+    "DATABASE_URL": "postgres://postgres.oqadltfzjckgmjmjhsqk:WPIhQ2GuMJV4luaf@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=no-verify",
+    "NODE_ENV": "production",
+    "PORT": "5000",
+    "STATIC_SERVER_URL": "https://gym-genie-fitness.vercel.app",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://oqadltfzjckgmjmjhsqk.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9xYWRsdGZ6amNrZ21qbWpoc3FrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxOTQ3MjMsImV4cCI6MjA4Mzc3MDcyM30.GMZtVnJEz2tORV15dfHPykj35uVhR3njOU8Jk6BbCes",
+    "VITE_FIREBASE_API_KEY": "AIzaSyDLfHQ18kDZPqeziMm5d_9589FafsZqxhA",
+    "VITE_FIREBASE_AUTH_DOMAIN": "gym-genie-push-notifications.firebaseapp.com",
+    "VITE_FIREBASE_PROJECT_ID": "gym-genie-push-notifications",
+    "VITE_FIREBASE_STORAGE_BUCKET": "gym-genie-push-notifications.firebasestorage.app",
+    "VITE_FIREBASE_MESSAGING_SENDER_ID": "295629958510",
+    "VITE_FIREBASE_APP_ID": "1:295629958510:web:ed13edd1bed444031be57f",
+"VITE_FIREBASE_VAPID_KEY": "BLY3GL44_310eL8v4W0LCx2b_czx5u2RWVvAI5retnBaoXCU5S2kRNBdwSCbtPMDTY25pw010gZIQLgBTO4goXU"
+  }
+}
 }
