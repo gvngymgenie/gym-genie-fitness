@@ -135,7 +135,7 @@
     "DATABASE_URL": "postgres://postgres.sxvjgevfdzclwyxrqxbe:jnRtgRtc5J8iBlyZ@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=no-verify",
     "NODE_ENV": "production",
     "PORT": "5000",
-    "STATIC_SERVER_URL": "https://gym-genie-fitness.vercel.app",
+    "STATIC_SERVER_URL": "https://gym-genie-lime-fitness.vercel.app",
     "NEXT_PUBLIC_SUPABASE_URL": "https://sxvjgevfdzclwyxrqxbe.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9xYWRsdGZ6amNrZ21qbWpoc3FrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxOTQ3MjMsImV4cCI6MjA4Mzc3MDcyM30.GMZtVnJEz2tORV15dfHPykj35uVhR3njOU8Jk6BbCes",
     "VITE_FIREBASE_API_KEY": "AIzaSyDLfHQ18kDZPqeziMm5d_9589FafsZqxhA",
