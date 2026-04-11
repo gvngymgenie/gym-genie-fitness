@@ -49,9 +49,8 @@ function getPool(): pg.Pool {
       ca: process.env.DATABASE_SSL_CA,
     },
     max: 20,
-    min: 2,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: Number(process.env.DATABASE_CONNECTION_TIMEOUT_MS || 10000),
+    connectionTimeoutMillis: Number(process.env.DATABASE_CONNECTION_TIMEOUT_MS || 20000),
   });
   
   return pool;

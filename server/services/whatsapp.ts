@@ -160,6 +160,54 @@ export async function sendWhatsAppOTP(phoneNumber: string, otp: string): Promise
 }
 
 /**
+ * Send a payslip download link via WAHA as a text message.
+ * Used when the Plus version is not available for /api/sendFile.
+ */
+export async function sendWhatsAppPayslipLink(
+  phoneNumber: string,
+  trainerName: string,
+  monthYear: string,
+  netPayout: string,
+  downloadUrl: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const chatId = formatPhoneForWAHA(phoneNumber);
+  const message = `Hi ${trainerName},\nYour payslip for ${monthYear} is ready.\n\nNet payout: ₹${netPayout}\n\nDownload: ${downloadUrl}\n\nThis link will remain available for your records.`;
+
+  console.log(`WAHA: Sending payslip link to ${chatId}: ${downloadUrl}`);
+
+  try {
+    const response = await axios.post(
+      `${WAHA_URL}/api/sendText`,
+      {
+        session: 'default',
+        chatId: chatId,
+        text: message,
+      },
+      {
+        headers: {
+          'X-Api-Key': WAHA_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    console.log('WAHA: Payslip link sent successfully');
+
+    return {
+      success: true,
+      messageId: response.data.id?.toString() || `waha_link_${Date.now()}`,
+    };
+  } catch (error: any) {
+    console.error('WAHA: Error sending payslip link:', error.message);
+    return {
+      success: false,
+      error: `WAHA error: ${error.message}`,
+    };
+  }
+}
+
+/**
  * Format phone number for WhatsApp API
  */
 export function formatPhoneNumber(phoneNumber: string): string {
@@ -168,4 +216,66 @@ export function formatPhoneNumber(phoneNumber: string): string {
     clean = '91' + clean;
   }
   return clean;
+}
+
+/**
+ * Send a document (file) via WAHA
+ * Expects base64-encoded file data
+ */
+export async function sendWhatsAppDocument(
+  phoneNumber: string,
+  base64Data: string,
+  filename: string,
+  caption: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const chatId = formatPhoneForWAHA(phoneNumber);
+
+  console.log(`WAHA: Sending document to ${chatId}, file: ${filename}`);
+
+  try {
+    // Strip data: URI prefix if present — WAHA expects raw base64 in file.data
+    const cleanBase64 = base64Data.includes(',')
+      ? base64Data.split(',').pop()!
+      : base64Data;
+
+    const response = await axios.post(
+      `${WAHA_URL}/api/sendFile`,
+      {
+        session: 'default',
+        chatId: chatId,
+        file: {
+          mimetype: 'application/pdf',
+          filename: filename,
+          data: cleanBase64,
+        },
+        caption: caption,
+      },
+      {
+        headers: {
+          'X-Api-Key': WAHA_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000,
+      }
+    );
+
+    console.log('WAHA: Document sent successfully');
+
+    return {
+      success: true,
+      messageId: response.data.id?.toString() || `waha_doc_${Date.now()}`,
+    };
+  } catch (error: any) {
+    console.error('WAHA: Error sending document:', error.message);
+    if (error.response?.data) {
+      console.error('WAHA: Error response body:', JSON.stringify(error.response.data));
+    }
+    if (error.response?.status) {
+      console.error('WAHA: Error status:', error.response.status);
+    }
+    return {
+      success: false,
+      error: `WAHA error: ${error.message}`,
+    };
+  }
 }

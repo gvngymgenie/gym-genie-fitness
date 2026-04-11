@@ -12,16 +12,20 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
-import { 
-  Upload, 
-  FileImage, 
-  Trash2, 
-  Loader2, 
+import {
+  Upload,
+  FileImage,
+  Trash2,
+  Loader2,
   Cloud,
   Database,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  Download,
+  Users
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -37,11 +41,27 @@ interface UploadedFile {
   source: 'local' | 'supabase';
 }
 
+interface PayslipFile {
+  path: string;
+  name: string;
+  publicUrl: string;
+  size?: number;
+  updatedAt?: string;
+}
+
+interface Trainer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+}
+
 export default function AdminUploads() {
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadUrl, setUploadUrl] = useState("");
   const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file');
+  const [selectedTrainer, setSelectedTrainer] = useState<string>("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -69,6 +89,37 @@ export default function AdminUploads() {
         return null;
       } catch {
         return null;
+      }
+    },
+  });
+
+  // Fetch all trainers
+  const { data: trainers = [] } = useQuery<Trainer[]>({
+    queryKey: ["/api/users/role/trainer"],
+    queryFn: async () => {
+      try {
+        const res = await apiRequest("GET", "/api/users/role/trainer");
+        if (res.ok) return res.json();
+        return [];
+      } catch {
+        return [];
+      }
+    },
+  });
+
+  // Fetch payslips from Supabase
+  const { data: payslips = [], isLoading: isLoadingPayslips } = useQuery<PayslipFile[]>({
+    queryKey: ["/api/payslips/list", selectedTrainer],
+    queryFn: async () => {
+      try {
+        const url = selectedTrainer === "all" 
+          ? "/api/payslips/list" 
+          : `/api/payslips/list?trainerId=${selectedTrainer}`;
+        const res = await apiRequest("GET", url);
+        if (res.ok) return res.json();
+        return [];
+      } catch {
+        return [];
       }
     },
   });
@@ -115,10 +166,27 @@ export default function AdminUploads() {
       toast({ title: "File deleted" });
     },
     onError: (error: any) => {
-      toast({ 
-        title: "Delete Failed", 
-        description: error.message, 
-        variant: "destructive" 
+      toast({
+        title: "Delete Failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    },
+  });
+
+  const deletePayslipMutation = useMutation({
+    mutationFn: async (path: string) => {
+      await apiRequest("DELETE", `/api/payslips/${path}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/payslips/list", selectedTrainer] });
+      toast({ title: "Payslip deleted" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Delete Failed",
+        description: error.message,
+        variant: "destructive"
       });
     },
   });
@@ -147,9 +215,24 @@ export default function AdminUploads() {
             UPLOADS MANAGEMENT
           </h1>
           <p className="text-muted-foreground">
-            Manage avatar and image uploads for members.
+            Manage avatar uploads and view trainer payslips.
           </p>
         </div>
+
+        <Tabs defaultValue="images" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="images" className="flex items-center gap-2">
+              <FileImage className="h-4 w-4" />
+              Images
+            </TabsTrigger>
+            <TabsTrigger value="payslips" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Trainer Payslips
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Images Tab */}
+          <TabsContent value="images" className="space-y-6 mt-6">
 
         {/* Storage Stats */}
         <div className="grid gap-4 md:grid-cols-2">
@@ -383,6 +466,163 @@ export default function AdminUploads() {
             </div>
           </CardContent>
         </Card>
+          </TabsContent>
+
+          {/* Payslips Tab */}
+          <TabsContent value="payslips" className="space-y-6 mt-6">
+            {/* Trainer Filter */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Filter by Trainer
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2 items-center">
+                  <Label className="whitespace-nowrap">Select Trainer:</Label>
+                  <select
+                    value={selectedTrainer}
+                    onChange={(e) => setSelectedTrainer(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                  >
+                    <option value="all">All Trainers</option>
+                    {trainers.map((trainer) => (
+                      <option key={trainer.id} value={trainer.id}>
+                        {trainer.firstName} {trainer.lastName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payslips List */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Payslip PDFs
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/payslips/list", selectedTrainer] })}
+                  >
+                    Refresh
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingPayslips ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : payslips.length === 0 ? (
+                  <div className="py-12 text-center text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No payslips found.</p>
+                    <p className="text-sm">Generate payslips from the Salary page to see them here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {payslips.map((payslip: PayslipFile) => {
+                      // Extract trainer info from path
+                      const pathParts = payslip.path.split('/');
+                      const trainerId = pathParts.length > 1 ? pathParts[0] : null;
+                      const trainer = trainers.find(t => t.id === trainerId);
+                      const trainerName = trainer ? `${trainer.firstName} ${trainer.lastName}` : trainerId || 'Unknown';
+
+                      // Extract month and year from filename
+                      const filenameMatch = payslip.name.match(/payslip-(.+)-(.+)-(\d{4})\.pdf/);
+                      const trainerFirstName = filenameMatch ? filenameMatch[1] : '';
+                      const month = filenameMatch ? filenameMatch[2] : '';
+                      const year = filenameMatch ? filenameMatch[3] : '';
+
+                      return (
+                        <Card key={payslip.path} className="hover:shadow-md transition-shadow">
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="h-5 w-5 text-red-500" />
+                                  <p className="font-medium">
+                                    {trainerFirstName} - {month} {year}
+                                  </p>
+                                  <Badge variant="outline" className="text-xs">
+                                    {trainerName}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {payslip.size ? formatFileSize(payslip.size) : 'Unknown size'}
+                                  {payslip.updatedAt && (
+                                    <>
+                                      {' • '}
+                                      {new Date(payslip.updatedAt).toLocaleDateString('en-IN', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                      })}
+                                    </>
+                                  )}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate max-w-md">
+                                  {payslip.publicUrl}
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-2"
+                                  onClick={() => window.open(payslip.publicUrl, '_blank')}
+                                >
+                                  <Download className="h-4 w-4" />
+                                  Download
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-2 text-destructive hover:bg-destructive/10"
+                                  onClick={() => {
+                                    if (confirm(`Delete this payslip for ${trainerFirstName} ${month} ${year}?`)) {
+                                      deletePayslipMutation.mutate(encodeURIComponent(payslip.path));
+                                    }
+                                  }}
+                                  disabled={deletePayslipMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Payslip Info */}
+            <Card className="bg-muted/50">
+              <CardHeader>
+                <CardTitle className="text-lg">About Payslips</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <p><strong>Storage Location:</strong> All payslips are stored in Supabase Storage in the "payslips" bucket.</p>
+                  <p><strong>Organization:</strong> Files are organized by trainer ID for easy management.</p>
+                  <p><strong>Generation:</strong> Payslips are generated as PDFs from the Salary Management page when you click "Generate & Upload Payslip".</p>
+                  <p className="text-muted-foreground">
+                    Each payslip is named with the format: <code className="bg-background px-2 py-0.5 rounded">payslip-[FirstName]-[Month]-[Year].pdf</code>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </AdminLayout>
   );

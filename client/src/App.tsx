@@ -15,6 +15,7 @@ import Home from "@/pages/Home";
 import Leads from "@/pages/Leads";
 import Members from "@/pages/Members";
 import Attendance from "@/pages/Attendance";
+import Salary from "@/pages/Salary";
 import AdminPlans from "@/pages/Admin/AdminPlans";
 import AdminStaff from "@/pages/Admin/AdminStaff";
 import AdminRoles from "@/pages/Admin/AdminRoles";
@@ -59,6 +60,7 @@ function Router() {
       <Route path="/members" component={Members} />
       <Route path="/members/:id" component={MemberProfile} />
       <Route path="/attendance" component={Attendance} />
+      <Route path="/salary" component={Salary} />
       <Route path="/payments" component={Payments} />
       <Route path="/admin">
         <Redirect to="/admin/plans" />

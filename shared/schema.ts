@@ -35,8 +35,8 @@ export type User = typeof users.$inferSelect;
 export type SafeUser = Omit<User, "password">;
 
 export const rolePermissions: Record<Role, string[]> = {
-  admin: ["dashboard", "leads", "members", "workouts", "attendance", "payments", "admin", "settings"],
-  manager: ["dashboard", "leads", "members", "workouts", "attendance", "payments", "settings"],
+  admin: ["dashboard", "leads", "members", "workouts", "attendance", "payments", "admin", "settings", "salary"],
+  manager: ["dashboard", "leads", "members", "workouts", "attendance", "payments", "settings", "salary"],
   trainer: ["dashboard", "members", "workouts", "attendance"],
   staff: ["dashboard", "leads", "members", "attendance"],
   member: ["dashboard"],
@@ -304,6 +304,142 @@ export const updateAttendanceSchema = createInsertSchema(attendance).omit({
 export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
 export type UpdateAttendance = z.infer<typeof updateAttendanceSchema>;
 export type Attendance = typeof attendance.$inferSelect;
+
+// Staff Attendance (trainers and staff)
+export const staffAttendance = pgTable("staff_attendance", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  personType: text("person_type").notNull(), // 'trainer' | 'staff'
+  personId: varchar("person_id").notNull(),
+  personName: text("person_name").notNull(),
+  date: text("date").notNull(),
+  checkInTime: text("check_in_time").notNull(),
+  checkOutTime: text("check_out_time"),
+  method: text("method").notNull().default("Manual"), // 'Manual' | 'Self'
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertStaffAttendanceSchema = createInsertSchema(staffAttendance).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const updateStaffAttendanceSchema = createInsertSchema(staffAttendance).omit({
+  id: true,
+  createdAt: true,
+}).partial();
+
+export type InsertStaffAttendance = z.infer<typeof insertStaffAttendanceSchema>;
+export type UpdateStaffAttendance = z.infer<typeof updateStaffAttendanceSchema>;
+export type StaffAttendance = typeof staffAttendance.$inferSelect;
+
+// Trainer Salary Configuration
+export const trainerSalaryConfigs = pgTable("trainer_salary_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trainerId: varchar("trainer_id").notNull().unique(),
+  baseSalary: integer("base_salary").notNull().default(0), // monthly base salary in smallest currency unit
+  perSessionRate: integer("per_session_rate").notNull().default(0), // earned per completed coaching session
+  attendanceBonusPerDay: integer("attendance_bonus_per_day").notNull().default(0), // bonus per attendance day
+  attendanceBonusThreshold: integer("attendance_bonus_threshold").notNull().default(20), // min days/month to qualify for bonus
+  reviewBonusMinRating: integer("review_bonus_min_rating").notNull().default(4), // min avg rating (1-5) to qualify
+  reviewBonusAmount: integer("review_bonus_amount").notNull().default(0), // bonus amount if rating threshold met
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertTrainerSalaryConfigSchema = createInsertSchema(trainerSalaryConfigs).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export const updateTrainerSalaryConfigSchema = createInsertSchema(trainerSalaryConfigs).omit({
+  id: true,
+  updatedAt: true,
+}).partial();
+
+export type InsertTrainerSalaryConfig = z.infer<typeof insertTrainerSalaryConfigSchema>;
+export type UpdateTrainerSalaryConfig = z.infer<typeof updateTrainerSalaryConfigSchema>;
+export type TrainerSalaryConfig = typeof trainerSalaryConfigs.$inferSelect;
+
+// Trainer Payouts (monthly)
+export const trainerPayouts = pgTable("trainer_payouts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trainerId: varchar("trainer_id").notNull(),
+  month: integer("month").notNull(), // 1-12
+  year: integer("year").notNull(),
+  baseSalary: integer("base_salary").notNull().default(0),
+  attendanceDays: integer("attendance_days").notNull().default(0),
+  attendanceBonus: integer("attendance_bonus").notNull().default(0),
+  sessionCount: integer("session_count").notNull().default(0),
+  sessionBonus: integer("session_bonus").notNull().default(0),
+  reviewAvgRating: integer("review_avg_rating").notNull().default(0), // rating * 100 for precision (e.g., 450 = 4.50)
+  reviewBonus: integer("review_bonus").notNull().default(0),
+  grossPay: integer("gross_pay").notNull().default(0),
+  deductions: integer("deductions").notNull().default(0),
+  netPay: integer("net_pay").notNull().default(0),
+  status: text("status").notNull().default("draft"), // draft, approved, paid
+  payDate: text("pay_date"), // actual payment date
+  notes: text("notes"),
+  payslipUrl: text("payslip_url"), // Supabase Storage URL for the generated PDF
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertTrainerPayoutSchema = createInsertSchema(trainerPayouts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateTrainerPayoutSchema = createInsertSchema(trainerPayouts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).partial();
+
+export type InsertTrainerPayout = z.infer<typeof insertTrainerPayoutSchema>;
+export type UpdateTrainerPayout = z.infer<typeof updateTrainerPayoutSchema>;
+export type TrainerPayout = typeof trainerPayouts.$inferSelect;
+
+// Trainer Payout Line Items (breakdown details)
+export const trainerPayoutLineItems = pgTable("trainer_payout_line_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  payoutId: varchar("payout_id").notNull(),
+  type: text("type").notNull(), // attendance, session, review_bonus, base_salary, deduction
+  description: text("description").notNull(),
+  amount: integer("amount").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertTrainerPayoutLineItemSchema = createInsertSchema(trainerPayoutLineItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTrainerPayoutLineItem = z.infer<typeof insertTrainerPayoutLineItemSchema>;
+export type TrainerPayoutLineItem = typeof trainerPayoutLineItems.$inferSelect;
+
+// Relations
+export const trainerSalaryConfigsRelations = relations(trainerSalaryConfigs, ({ one }) => ({
+  trainer: one(users, {
+    fields: [trainerSalaryConfigs.trainerId],
+    references: [users.id],
+  }),
+}));
+
+export const trainerPayoutsRelations = relations(trainerPayouts, ({ one, many }) => ({
+  trainer: one(users, {
+    fields: [trainerPayouts.trainerId],
+    references: [users.id],
+  }),
+  lineItems: many(trainerPayoutLineItems),
+}));
+
+export const trainerPayoutLineItemsRelations = relations(trainerPayoutLineItems, ({ one }) => ({
+  payout: one(trainerPayouts, {
+    fields: [trainerPayoutLineItems.payoutId],
+    references: [trainerPayouts.id],
+  }),
+}));
 
 // Workout Programs
 export const workoutPrograms = pgTable("workout_programs", {

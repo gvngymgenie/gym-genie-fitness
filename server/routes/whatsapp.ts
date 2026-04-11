@@ -4,11 +4,14 @@ import { db } from "../db";
 import { members } from "@shared/schema";
 import {
   sendWhatsAppTestMessage,
+  sendWhatsAppDocument,
+  sendWhatsAppPayslipLink,
   checkWhatsAppHealth,
   WhatsAppTestRequest,
   WhatsAppHealthResponse,
   isWhatsAppConfigured
 } from "../services/whatsapp";
+import { PayslipStorage } from "../utils/payslipStorage";
 
 function normalizePhoneNumber(phone: string): string {
   // Remove any non-digit characters
@@ -39,6 +42,14 @@ const whatsappSendSchema = z.object({
   memberId: z.string().optional(),
   phone: z.string().optional(),
   recipientName: z.string().optional(),
+});
+
+const whatsappDocumentSchema = z.object({
+  phone: z.string().min(8, "Phone number must be at least 8 characters"),
+  base64Data: z.string().optional(),
+  downloadUrl: z.string().optional(), // Pre-existing Supabase URL (skip upload)
+  filename: z.string().default("payslip.pdf"),
+  caption: z.string().default("Your payslip is attached."),
 });
 
 // In-memory message log (replace with DB table later)
@@ -330,6 +341,91 @@ export function registerWhatsAppRoutes(app: Express): void {
       });
     } catch (error) {
       res.status(500).json({ success: false, message: "Error checking WhatsApp status", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
+  // Send document (PDF payslip) via WhatsApp
+  // If downloadUrl is provided, sends a text with that URL directly.
+  // Otherwise uploads PDF to Supabase first, then sends a text with the link.
+  app.post("/api/whatsapp/send-document", async (req, res) => {
+    try {
+      const validatedData = whatsappDocumentSchema.parse(req.body);
+
+      let downloadUrl: string;
+
+      if (validatedData.downloadUrl) {
+        // Use pre-existing URL (from payout record)
+        downloadUrl = validatedData.downloadUrl;
+      } else if (validatedData.base64Data) {
+        // Upload to Supabase first
+        const cleanBase64 = validatedData.base64Data.includes(",")
+          ? validatedData.base64Data.split(",").pop()!
+          : validatedData.base64Data;
+
+        downloadUrl = await PayslipStorage.uploadPayslip(
+          cleanBase64,
+          validatedData.filename
+        );
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Either base64Data or downloadUrl is required",
+        });
+      }
+
+      // Extract info from caption for personalization
+      const trainerName = validatedData.caption.match(/Hi (\w+)/)?.[1] || "Trainer";
+      const monthYearMatch = validatedData.caption.match(/payslip for (.+?) (?:is|attached)/);
+      const monthYear = monthYearMatch?.[1] || "";
+      const payoutMatch = validatedData.caption.match(/Net payout: ₹([\d,.]+)/);
+      const netPayout = payoutMatch?.[1] || "";
+
+      // Send text message with download link
+      const result = await sendWhatsAppPayslipLink(
+        validatedData.phone,
+        trainerName,
+        monthYear,
+        netPayout,
+        downloadUrl
+      );
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: "Failed to send WhatsApp payslip link",
+          error: result.error,
+        });
+      }
+
+      // Log the message send
+      const logEntry: WhatsAppMessageLog = {
+        id: generateId(),
+        recipientType: "individual",
+        recipientName: validatedData.phone,
+        phone: validatedData.phone,
+        message: `[Payslip Link] ${validatedData.filename} — Download: ${downloadUrl}`,
+        status: "sent",
+        messageId: result.messageId,
+        createdAt: new Date().toISOString(),
+      };
+      messageLog.unshift(logEntry);
+
+      res.json({
+        success: true,
+        message: "Payslip link sent via WhatsApp",
+        downloadUrl,
+        messageId: result.messageId,
+        log: logEntry,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, message: "Invalid request data", error: error.issues });
+      }
+      res.status(500).json({
+        success: false,
+        message: "Failed to send WhatsApp payslip link",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   });
 }

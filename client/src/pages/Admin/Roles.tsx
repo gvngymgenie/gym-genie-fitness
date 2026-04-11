@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Shield, Users, UserCog, Dumbbell, ClipboardList, LayoutDashboard, UserPlus, CalendarCheck, FileText, Bell, Settings, Save, Loader2, List } from "lucide-react";
+import { Shield, Users, UserCog, Dumbbell, ClipboardList, LayoutDashboard, UserPlus, CalendarCheck, FileText, Bell, Settings, Save, Loader2, List, Banknote, CreditCard } from "lucide-react";
 import React, { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Role } from "@shared/schema";
@@ -14,7 +14,9 @@ const allPages = [
     { id: "members", label: "Members", icon: Users, description: "Member profiles and management" },
     { id: "attendance", label: "Attendance", icon: CalendarCheck, description: "Check-in/out tracking" },
     { id: "workouts", label: "Workouts & Diet", icon: Dumbbell, description: "Workout plans and diet management" },
+    { id: "payments", label: "Payments", icon: CreditCard, description: "Member payment management" },
     { id: "trainers", label: "Personal Trainers", icon: UserCog, description: "Trainer assignments and schedules" },
+    { id: "salary", label: "Trainer Salary", icon: Banknote, description: "Trainer salary and payslip management" },
     { id: "reports", label: "Reports", icon: FileText, description: "Analytics and reporting" },
     { id: "notifications", label: "Notifications", icon: Bell, description: "System notifications" },
     { id: "admin", label: "Admin Settings", icon: Settings, description: "Full administrative access" },
@@ -30,10 +32,10 @@ const roleDetails: Record<Role, { color: string; description: string; icon: Reac
 };
 
 const defaultPermissions: Record<Role, string[]> = {
-    admin: ["dashboard", "leads", "members", "workouts", "attendance", "admin", "reports", "trainers", "notifications", "options"],
-    manager: ["dashboard", "leads", "members", "workouts", "attendance", "reports", "trainers", "notifications"],
+    admin: ["dashboard", "leads", "members", "workouts", "attendance", "payments", "admin", "reports", "trainers", "salary", "notifications", "options"],
+    manager: ["dashboard", "leads", "members", "workouts", "attendance", "payments", "reports", "trainers", "salary", "notifications"],
     trainer: ["dashboard", "members", "workouts", "attendance"],
-    staff: ["dashboard", "leads", "members", "attendance"],
+    staff: ["dashboard", "leads", "members", "attendance", "payments"],
     member: ["dashboard"],
 };
 

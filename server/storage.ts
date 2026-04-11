@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import { db as drizzleDb } from "./db";
 import { eq, and, desc, inArray } from "drizzle-orm";
-import type { User, SafeUser, InsertUser, UpdateUser, MembershipPlan, InsertPlan, UpdatePlan, InventoryItem, InsertInventory, UpdateInventory, Lead, InsertLead, UpdateLead, Member, InsertMember, UpdateMember, CompanySettings, InsertCompanySettings, UpdateCompanySettings, Branch, InsertBranch, UpdateBranch, Attendance, InsertAttendance, WorkoutProgram, InsertWorkoutProgram, UpdateWorkoutProgram, DietPlan, InsertDietPlan, UpdateDietPlan, WorkoutProgramAssignment, InsertWorkoutProgramAssignment, DietPlanAssignment, InsertDietPlanAssignment, TrainerProfile, InsertTrainerProfile, UpdateTrainerProfile, TrainerAvailability, InsertTrainerAvailability, TrainerBooking, InsertTrainerBooking, UpdateTrainerBooking, TrainerFeedback, InsertTrainerFeedback, MemberOtp, InsertMemberOtp, BmiRecord, InsertBmiRecord, MemberMeasurement, InsertMemberMeasurement, UpdateMemberMeasurement, Notification, InsertNotification, UpdateNotification, PushSubscription, InsertPushSubscription, RolePermission } from "@shared/schema";
+import type { User, SafeUser, InsertUser, UpdateUser, MembershipPlan, InsertPlan, UpdatePlan, InventoryItem, InsertInventory, UpdateInventory, Lead, InsertLead, UpdateLead, Member, InsertMember, UpdateMember, CompanySettings, InsertCompanySettings, UpdateCompanySettings, Branch, InsertBranch, UpdateBranch, Attendance, InsertAttendance, StaffAttendance, InsertStaffAttendance, TrainerSalaryConfig, InsertTrainerSalaryConfig, UpdateTrainerSalaryConfig, TrainerPayout, InsertTrainerPayout, UpdateTrainerPayout, TrainerPayoutLineItem, InsertTrainerPayoutLineItem, WorkoutProgram, InsertWorkoutProgram, UpdateWorkoutProgram, DietPlan, InsertDietPlan, UpdateDietPlan, WorkoutProgramAssignment, InsertWorkoutProgramAssignment, DietPlanAssignment, InsertDietPlanAssignment, TrainerProfile, InsertTrainerProfile, UpdateTrainerProfile, TrainerAvailability, InsertTrainerAvailability, TrainerBooking, InsertTrainerBooking, UpdateTrainerBooking, TrainerFeedback, InsertTrainerFeedback, MemberOtp, InsertMemberOtp, BmiRecord, InsertBmiRecord, MemberMeasurement, InsertMemberMeasurement, UpdateMemberMeasurement, Notification, InsertNotification, UpdateNotification, PushSubscription, InsertPushSubscription, RolePermission } from "@shared/schema";
 import * as schema from "../shared/schema";
 import { transformMemberToCamelCase } from "./db";
 
@@ -68,6 +68,24 @@ export interface IStorage {
   getAttendanceByMember(memberId: string): Promise<Attendance[]>;
   createAttendance(record: InsertAttendance): Promise<Attendance>;
   deleteAttendance(id: string): Promise<boolean>;
+  // Staff Attendance
+  getStaffAttendanceByDate(date: string): Promise<StaffAttendance[]>;
+  getStaffAttendanceByPerson(personId: string): Promise<StaffAttendance[]>;
+  createStaffAttendance(record: InsertStaffAttendance): Promise<StaffAttendance>;
+  deleteStaffAttendance(id: string): Promise<boolean>;
+  // Trainer Salary
+  getSalaryConfig(trainerId: string): Promise<TrainerSalaryConfig | undefined>;
+  upsertSalaryConfig(trainerId: string, config: InsertTrainerSalaryConfig): Promise<TrainerSalaryConfig>;
+  updateSalaryConfig(id: string, config: UpdateTrainerSalaryConfig): Promise<TrainerSalaryConfig | undefined>;
+  getPayoutByMonth(trainerId: string, month: number, year: number): Promise<TrainerPayout | undefined>;
+  getPayout(id: string): Promise<TrainerPayout | undefined>;
+  getPayoutHistory(trainerId: string): Promise<TrainerPayout[]>;
+  getAllPayouts(filters: { trainerId?: string; month?: number; year?: number }): Promise<TrainerPayout[]>;
+  createPayout(payout: InsertTrainerPayout): Promise<TrainerPayout>;
+  updatePayout(id: string, payout: UpdateTrainerPayout): Promise<TrainerPayout | undefined>;
+  getPayoutLineItems(payoutId: string): Promise<TrainerPayoutLineItem[]>;
+  createPayoutLineItem(item: InsertTrainerPayoutLineItem): Promise<TrainerPayoutLineItem>;
+  deletePayoutLineItems(payoutId: string): Promise<boolean>;
   // Workout Programs
   getAllWorkoutPrograms(): Promise<WorkoutProgram[]>;
   getWorkoutProgramsByMember(memberId: string): Promise<WorkoutProgram[]>;
@@ -107,8 +125,10 @@ export interface IStorage {
   createTrainerBooking(booking: InsertTrainerBooking): Promise<TrainerBooking>;
   updateTrainerBooking(id: string, booking: UpdateTrainerBooking): Promise<TrainerBooking | undefined>;
   deleteTrainerBooking(id: string): Promise<boolean>;
+  getTrainerBookingsByMonth(trainerId: string, month: number, year: number): Promise<TrainerBooking[]>;
   // Trainer Feedback
   getTrainerFeedback(trainerId: string): Promise<TrainerFeedback[]>;
+  getTrainerFeedbackByMonth(trainerId: string, month: number, year: number): Promise<TrainerFeedback[]>;
   createTrainerFeedback(feedback: InsertTrainerFeedback): Promise<TrainerFeedback>;
   // Trainer Availability
   getTrainerAvailabilityByWeek(trainerId: string, weekDates: string[]): Promise<TrainerAvailability[]>;
@@ -677,6 +697,113 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
+  // Staff Attendance
+  async getStaffAttendanceByDate(date: string): Promise<StaffAttendance[]> {
+    return await drizzleDb.select().from(schema.staffAttendance).where(eq(schema.staffAttendance.date, date)).orderBy(schema.staffAttendance.checkInTime);
+  }
+
+  async getStaffAttendanceByPerson(personId: string): Promise<StaffAttendance[]> {
+    return await drizzleDb.select().from(schema.staffAttendance).where(eq(schema.staffAttendance.personId, personId)).orderBy(schema.staffAttendance.date);
+  }
+
+  async createStaffAttendance(record: InsertStaffAttendance): Promise<StaffAttendance> {
+    const [created] = await drizzleDb.insert(schema.staffAttendance).values(record).returning();
+    return created;
+  }
+
+  async deleteStaffAttendance(id: string): Promise<boolean> {
+    const result = await drizzleDb.delete(schema.staffAttendance).where(eq(schema.staffAttendance.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Trainer Salary
+  async getSalaryConfig(trainerId: string): Promise<TrainerSalaryConfig | undefined> {
+    const [config] = await drizzleDb.select().from(schema.trainerSalaryConfigs).where(eq(schema.trainerSalaryConfigs.trainerId, trainerId));
+    return config;
+  }
+
+  async upsertSalaryConfig(trainerId: string, config: InsertTrainerSalaryConfig): Promise<TrainerSalaryConfig> {
+    const [created] = await drizzleDb
+      .insert(schema.trainerSalaryConfigs)
+      .values(config)
+      .onConflictDoUpdate({
+        target: schema.trainerSalaryConfigs.trainerId,
+        set: {
+          baseSalary: config.baseSalary,
+          perSessionRate: config.perSessionRate,
+          attendanceBonusPerDay: config.attendanceBonusPerDay,
+          attendanceBonusThreshold: config.attendanceBonusThreshold,
+          reviewBonusMinRating: config.reviewBonusMinRating,
+          reviewBonusAmount: config.reviewBonusAmount,
+        },
+      })
+      .returning();
+    return created;
+  }
+
+  async updateSalaryConfig(id: string, config: UpdateTrainerSalaryConfig): Promise<TrainerSalaryConfig | undefined> {
+    const [updated] = await drizzleDb.update(schema.trainerSalaryConfigs).set(config).where(eq(schema.trainerSalaryConfigs.id, id)).returning();
+    return updated;
+  }
+
+  async getPayoutByMonth(trainerId: string, month: number, year: number): Promise<TrainerPayout | undefined> {
+    const [payout] = await drizzleDb
+      .select()
+      .from(schema.trainerPayouts)
+      .where(and(eq(schema.trainerPayouts.trainerId, trainerId), eq(schema.trainerPayouts.month, month), eq(schema.trainerPayouts.year, year)));
+    return payout;
+  }
+
+  async getPayout(id: string): Promise<TrainerPayout | undefined> {
+    const [payout] = await drizzleDb
+      .select()
+      .from(schema.trainerPayouts)
+      .where(eq(schema.trainerPayouts.id, id));
+    return payout;
+  }
+
+  async getPayoutHistory(trainerId: string): Promise<TrainerPayout[]> {
+    return await drizzleDb.select().from(schema.trainerPayouts).where(eq(schema.trainerPayouts.trainerId, trainerId)).orderBy(desc(schema.trainerPayouts.year), desc(schema.trainerPayouts.month));
+  }
+
+  async getAllPayouts(filters: { trainerId?: string; month?: number; year?: number }): Promise<TrainerPayout[]> {
+    let query = drizzleDb.select().from(schema.trainerPayouts);
+    const conditions = [];
+    if (filters.trainerId) conditions.push(eq(schema.trainerPayouts.trainerId, filters.trainerId));
+    if (filters.month) conditions.push(eq(schema.trainerPayouts.month, filters.month));
+    if (filters.year) conditions.push(eq(schema.trainerPayouts.year, filters.year));
+    if (conditions.length > 0) {
+      // @ts-ignore
+      query = query.where(and(...conditions));
+    }
+    return await query.orderBy(desc(schema.trainerPayouts.year), desc(schema.trainerPayouts.month));
+  }
+
+  async createPayout(payout: InsertTrainerPayout): Promise<TrainerPayout> {
+    const [created] = await drizzleDb.insert(schema.trainerPayouts).values(payout).returning();
+    return created;
+  }
+
+  async updatePayout(id: string, payout: UpdateTrainerPayout): Promise<TrainerPayout | undefined> {
+    const [updated] = await drizzleDb.update(schema.trainerPayouts).set(payout).where(eq(schema.trainerPayouts.id, id)).returning();
+    return updated;
+  }
+
+  async getPayoutLineItems(payoutId: string): Promise<TrainerPayoutLineItem[]> {
+    return await drizzleDb.select().from(schema.trainerPayoutLineItems).where(eq(schema.trainerPayoutLineItems.payoutId, payoutId)).orderBy(schema.trainerPayoutLineItems.type);
+  }
+
+  async createPayoutLineItem(item: InsertTrainerPayoutLineItem): Promise<TrainerPayoutLineItem> {
+    const [created] = await drizzleDb.insert(schema.trainerPayoutLineItems).values(item).returning();
+    return created;
+  }
+
+  async deletePayoutLineItems(payoutId: string): Promise<boolean> {
+    const result = await drizzleDb.delete(schema.trainerPayoutLineItems).where(eq(schema.trainerPayoutLineItems.payoutId, payoutId)).returning();
+    return result.length > 0;
+  }
+
+
   // Workout Programs
   async getAllWorkoutPrograms(): Promise<WorkoutProgram[]> {
     return await drizzleDb.select().from(schema.workoutPrograms);
@@ -915,9 +1042,24 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
+  async getTrainerBookingsByMonth(trainerId: string, month: number, year: number): Promise<TrainerBooking[]> {
+    const allBookings = await drizzleDb.select().from(schema.trainerBookings).where(eq(schema.trainerBookings.trainerId, trainerId));
+    const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+    return allBookings.filter(b => b.bookingDate.startsWith(monthStr) && b.status === "completed");
+  }
+
   // Trainer Feedback
   async getTrainerFeedback(trainerId: string): Promise<TrainerFeedback[]> {
     return await drizzleDb.select().from(schema.trainerFeedback).where(eq(schema.trainerFeedback.trainerId, trainerId));
+  }
+
+  async getTrainerFeedbackByMonth(trainerId: string, month: number, year: number): Promise<TrainerFeedback[]> {
+    const allFeedback = await drizzleDb.select().from(schema.trainerFeedback).where(eq(schema.trainerFeedback.trainerId, trainerId));
+    const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+    return allFeedback.filter(f => {
+      const date = f.submittedAt instanceof Date ? f.submittedAt.toISOString() : String(f.submittedAt);
+      return date.startsWith(monthStr);
+    });
   }
 
   async createTrainerFeedback(feedback: InsertTrainerFeedback): Promise<TrainerFeedback> {

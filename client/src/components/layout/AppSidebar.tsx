@@ -15,6 +15,7 @@ import {
   X,
   Shield,
   List,
+  Banknote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo } from "react";
@@ -34,6 +35,7 @@ const routeToPermissionMap: Record<string, string> = {
   "/reports": "reports",
   "/trainers": "trainers",
   "/notifications": "notifications",
+  "/salary": "salary",
 };
 
 const allSidebarItems = [
@@ -44,6 +46,7 @@ const allSidebarItems = [
   { icon: Dumbbell, label: "Workouts & Diet", href: "/workouts", permission: "workouts" as const, roles: ["admin", "manager", "trainer"] as Role[] },
   { icon: CreditCard, label: "Payments", href: "/payments", permission: "payments" as const, roles: ["admin", "manager", "staff"] as Role[] },
   { icon: UserCog, label: "Personal Trainers", href: "/trainers", permission: "trainers" as const, roles: ["admin", "manager"] as Role[] },
+  { icon: Banknote, label: "Trainer Salary", href: "/salary", permission: "salary" as const, roles: ["admin", "manager"] as Role[] },
   { icon: FileText, label: "Reports", href: "/reports", permission: "reports" as const, roles: ["admin", "manager"] as Role[] },
   { icon: Bell, label: "Notifications", href: "/notifications", permission: "notifications" as const, roles: ["admin", "manager", "trainer", "staff"] as Role[] },
   { icon: Settings, label: "Admin", href: "/admin/plans", permission: "admin" as const, roles: ["admin"] as Role[] },

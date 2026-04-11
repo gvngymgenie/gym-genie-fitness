@@ -13,6 +13,7 @@ import { registerNotificationRoutes } from "./routes/notifications";
 import { registerCompanyRoutes } from "./routes/company";
 import { registerMemberRoutes } from "./routes/members";
 import { registerAttendanceRoutes } from "./routes/attendance";
+import { registerStaffAttendanceRoutes } from "./routes/staff-attendance";
 import { registerBranchRoutes } from "./routes/branches";
 import { registerWorkoutRoutes } from "./routes/workouts";
 import { registerDietRoutes } from "./routes/diets";
@@ -25,6 +26,7 @@ import { registerOptionsRoutes } from "./routes/options";
 import { registerUploadsRoutes } from "./routes/uploads";
 import { registerAIRoutes } from "./routes/ai";
 import { registerMemberCreditsRoutes } from "./routes/memberCredits";
+import { registerSalaryRoutes } from "./routes/salary";
 import { registerAiUsageRoutes } from "./routes/aiUsage";
 import { registerWhatsAppRoutes } from "./routes/whatsapp";
 
@@ -50,6 +52,7 @@ export async function registerRoutes(
   registerMemberRoutes(app);
   registerBranchRoutes(app);
   registerAttendanceRoutes(app);
+  registerStaffAttendanceRoutes(app);
   registerNotificationRoutes(app);
   registerWorkoutRoutes(app);
   registerDietRoutes(app);
@@ -62,6 +65,7 @@ export async function registerRoutes(
   registerUploadsRoutes(app);
   registerAIRoutes(app);
   registerMemberCreditsRoutes(app);
+  registerSalaryRoutes(app);
   registerAiUsageRoutes(app);
   registerWhatsAppRoutes(app);
 

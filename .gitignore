@@ -47,3 +47,5 @@ next-env.d.ts
 .vercel
 .vercel.bak
 .env.example
+.qwen/settings.json
+.qwen/settings.json.orig
