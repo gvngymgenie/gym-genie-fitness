@@ -66,7 +66,7 @@ const getRoleBadgeColor = (role: string) => {
 export function AppSidebar() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, logout, role, permissions, setPermissions, isModuleEnabled } = useAuth();
+  const { user, logout, role, permissions, setPermissions, isModuleEnabled, companyName, companyLogo } = useAuth();
 
   // Fetch fresh permissions from API only for non-admin roles
   useEffect(() => {
@@ -131,13 +131,25 @@ export function AppSidebar() {
       {/* Desktop Sidebar */}
       <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col h-screen fixed left-0 top-0 z-40 hidden md:flex">
         <div className="p-6">
-          <h1
+          <div
             onClick={() => (window.location.href = "/")}
-            className="text-2xl font-bold text-primary font-heading tracking-wider flex items-center gap-2 cursor-pointer"
+            className="flex items-center gap-2 cursor-pointer"
           >
-            <Dumbbell className="h-8 w-8 text-accent" />
-            Lime Fitness
-          </h1>
+            {companyLogo ? (
+              <img
+                src={companyLogo}
+                alt={companyName || "Company Logo"}
+                className="h-10 w-auto object-contain max-w-[180px]"
+              />
+            ) : <Dumbbell className="h-8 w-8 text-accent" />}
+              <>
+                
+                <h1 className="text-2xl font-bold text-primary font-heading tracking-wider">
+                  {companyName || "Lime Fitness"}
+                </h1>
+              </>
+            
+          </div>
           <p className="text-xs text-muted-foreground mt-1 tracking-widest uppercase">
             Gym Management System
           </p>
@@ -294,10 +306,20 @@ export function AppSidebar() {
           )}
         </button>
         <div className="flex items-center gap-2">
-          <Dumbbell className="h-6 w-6 text-accent" />
-          <span className="font-bold text-lg font-heading text-primary">
-            Lime Fitness
-          </span>
+          {companyLogo ? (
+            <img
+              src={companyLogo}
+              alt={companyName || "Company Logo"}
+              className="h-8 w-auto object-contain"
+            />
+          ) : (
+            <>
+              <Dumbbell className="h-6 w-6 text-accent" />
+              <span className="font-bold text-lg font-heading text-primary">
+                {companyName || "Lime Fitness"}
+              </span>
+            </>
+          )}
         </div>
         <div className="w-10" />
       </header>

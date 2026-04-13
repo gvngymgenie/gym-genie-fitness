@@ -31,6 +31,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AdminLayout } from "@/components/layout/AdminLayout";
+import { useAuth } from "@/lib/auth";
 
 interface UploadedFile {
   id: string;
@@ -64,6 +65,9 @@ export default function AdminUploads() {
   const [selectedTrainer, setSelectedTrainer] = useState<string>("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isModuleEnabled } = useAuth();
+
+  const isSalaryEnabled = isModuleEnabled("salary");
 
   // Fetch uploaded files from local uploads directory
   const { data: localFiles = [], isLoading: isLoadingLocal } = useQuery<UploadedFile[]>({
@@ -211,7 +215,7 @@ export default function AdminUploads() {
     <AdminLayout>
       <div className="space-y-8">
         <div className="flex flex-col gap-2">
-          <h1 className="text-4xl font-bold font-heading text-foreground uppercase tracking-tight">
+          <h1 className="text-2xl font-bold font-heading text-foreground uppercase tracking-tight">
             UPLOADS MANAGEMENT
           </h1>
           <p className="text-muted-foreground">
@@ -220,16 +224,21 @@ export default function AdminUploads() {
         </div>
 
         <Tabs defaultValue="images" className="w-full">
+          {isSalaryEnabled?
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="images" className="flex items-center gap-2">
               <FileImage className="h-4 w-4" />
               Images
             </TabsTrigger>
-            <TabsTrigger value="payslips" className="flex items-center gap-2">
+            <TabsTrigger 
+              value="payslips" 
+              className="flex items-center gap-2"
+              disabled={!isSalaryEnabled}
+            >
               <FileText className="h-4 w-4" />
               Trainer Payslips
             </TabsTrigger>
-          </TabsList>
+          </TabsList>:null}
 
           {/* Images Tab */}
           <TabsContent value="images" className="space-y-6 mt-6">
@@ -470,6 +479,23 @@ export default function AdminUploads() {
 
           {/* Payslips Tab */}
           <TabsContent value="payslips" className="space-y-6 mt-6">
+            {!isSalaryEnabled && (
+              <Card className="bg-muted/50 border-yellow-500/50">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="h-6 w-6 text-yellow-500" />
+                    <div>
+                      <p className="font-medium text-foreground">Trainer Payslips Disabled</p>
+                      <p className="text-sm text-muted-foreground">
+                        The salary module is currently disabled by your superadmin. 
+                        Please enable the salary module to access trainer payslips.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
             {/* Trainer Filter */}
             <Card>
               <CardHeader>

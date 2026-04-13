@@ -16,14 +16,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
-import { Building2, Phone, MapPin, User, Plus, Edit2, Trash2, Loader2, Save, Bell, BellOff, CheckCircle, XCircle } from "lucide-react";
+import { Building2, Phone, MapPin, User, Plus, Edit2, Trash2, Loader2, Save, Bell, BellOff, CheckCircle, XCircle, Image } from "lucide-react";
 import type { CompanySettings, Branch } from "@shared/schema";
 import { oneSignalManager, getOneSignalPlayerId, isOneSignalSubscribed, isOneSignalSupported } from "@/lib/onesignal";
 
 export default function Account() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, setCompanyName, setCompanyLogo } = useAuth();
 
   const [openBranch, setOpenBranch] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
@@ -33,7 +33,12 @@ export default function Account() {
     address: "",
     phone: "",
     email: "",
+    logo: "",
   });
+
+  const [logoPreview, setLogoPreview] = useState<string>("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   const [branchForm, setBranchForm] = useState({
     name: "",
@@ -74,7 +79,9 @@ export default function Account() {
         address: settings.address || "",
         phone: settings.phone || "",
         email: settings.email || "",
+        logo: settings.logo || "",
       });
+      setLogoPreview(settings.logo || "");
     }
   }, [settings]);
 
@@ -132,8 +139,15 @@ export default function Account() {
       const res = await apiRequest("PUT", "/api/company-settings", data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/company-settings"] });
+      // Update the global company name and logo in auth context
+      if (companyForm.companyName) {
+        setCompanyName(companyForm.companyName);
+      }
+      if (companyForm.logo) {
+        setCompanyLogo(companyForm.logo);
+      }
       toast({ title: "Company settings updated successfully" });
     },
     onError: (error: any) => {
@@ -215,6 +229,65 @@ export default function Account() {
   const handleSaveCompany = (e: React.FormEvent) => {
     e.preventDefault();
     updateSettingsMutation.mutate(companyForm);
+  };
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({ title: "Invalid File", description: "Please select an image file", variant: "destructive" });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File Too Large", description: "Image must be less than 5MB", variant: "destructive" });
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setLogoPreview(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    setLogoFile(file);
+
+    // Upload logo
+    setLogoUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'logo');
+
+      const response = await fetch('/api/uploads', {
+        method: 'POST',
+        body: formData,
+      });
+
+      // Get the actual error message from the server
+      const responseData = await response.json();
+      
+      if (!response.ok) {
+        console.error('Upload failed with status:', response.status, responseData);
+        throw new Error(responseData.error || 'Upload failed');
+      }
+
+      console.log('Upload successful:', responseData);
+      setCompanyForm({ ...companyForm, logo: responseData.url });
+      toast({ title: "Logo Uploaded", description: "Company logo uploaded successfully" });
+    } catch (error) {
+      console.error('Logo upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : "Failed to upload logo",
+        variant: "destructive"
+      });
+    } finally {
+      setLogoUploading(false);
+    }
   };
 
   const handleSaveBranch = (e: React.FormEvent) => {
@@ -337,6 +410,74 @@ export default function Account() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSaveCompany} className="space-y-6">
+            {/* Logo Upload Section */}
+            <div className="space-y-4">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Company Logo
+              </Label>
+              <div className="flex items-start gap-6">
+                {/* Logo Preview */}
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-32 h-32 rounded-lg border-2 border-border bg-background flex items-center justify-center overflow-hidden">
+                    {logoPreview ? (
+                      <img
+                        src={logoPreview}
+                        alt="Company Logo"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <Image className="h-12 w-12" />
+                        <span className="text-xs text-center">No Logo</span>
+                      </div>
+                    )}
+                  </div>
+                  {logoUploading && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Uploading...</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Upload Controls */}
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">
+                      Upload New Logo
+                    </Label>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoChange}
+                      className="mt-2 bg-background border-border"
+                      disabled={logoUploading}
+                      data-testid="input-logo-upload"
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Supported formats: PNG, JPG, GIF, SVG, WebP (Max 5MB)
+                    </p>
+                  </div>
+                  {companyForm.logo && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setCompanyForm({ ...companyForm, logo: "" });
+                        setLogoPreview("");
+                        setLogoFile(null);
+                      }}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Remove Logo
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">

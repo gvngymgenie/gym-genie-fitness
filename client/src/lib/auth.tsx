@@ -8,6 +8,8 @@ interface AuthContextType {
   role: Role | null;
   permissions: string[];
   enabledModules: string[];
+  companyName: string;
+  companyLogo: string;
   isAuthenticated: boolean;
   isMemberAuthenticated: boolean;
   isLoading: boolean;
@@ -20,6 +22,8 @@ interface AuthContextType {
   refreshPermissions: () => Promise<void>;
   setPermissions: (permissions: string[]) => void;
   isModuleEnabled: (moduleName: string) => boolean;
+  setCompanyName: (name: string) => void;
+  setCompanyLogo: (logo: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -63,6 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [member, setMember] = useState<Member | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [enabledModules, setEnabledModules] = useState<string[]>([]);
+  const [companyName, setCompanyName] = useState<string>("Lime Fitness");
+  const [companyLogo, setCompanyLogo] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [, navigate] = useLocation();
 
@@ -135,6 +141,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     // Always fetch enabled modules
     fetchEnabledModules();
+    
+    // Fetch company name and logo
+    const fetchCompanyData = async () => {
+      try {
+        const response = await fetch("/api/company-settings");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.companyName) {
+            setCompanyName(data.companyName);
+          }
+          if (data.logo) {
+            setCompanyLogo(data.logo);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch company data:", error);
+      }
+    };
+    fetchCompanyData();
+    
     setIsLoading(false);
   }, [fetchPermissions, fetchEnabledModules]);
 
@@ -216,6 +242,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     role: (user?.role || member ? (user?.role as Role) || "member" : null) as Role | null,
     permissions,
     enabledModules,
+    companyName,
+    companyLogo,
     isAuthenticated: !!user,
     isMemberAuthenticated: !!member,
     isLoading,
@@ -228,6 +256,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshPermissions,
     setPermissions,
     isModuleEnabled,
+    setCompanyName,
+    setCompanyLogo,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

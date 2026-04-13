@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import multer from "multer";
 
 // Environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -14,7 +15,31 @@ if (supabaseUrl && supabaseKey) {
   supabase = createClient(supabaseUrl, supabaseKey);
 }
 
-const UPLOADS_DIR = path.join(process.cwd(), "uploads", "avatars");
+const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    // Allow all image types including jpeg, jpg, png, gif, svg, webp
+    const allowedTypes = [
+      'image/jpeg',
+      'image/jpg', 
+      'image/png',
+      'image/gif',
+      'image/svg+xml',
+      'image/webp'
+    ];
+    if (allowedTypes.includes(file.mimetype.toLowerCase())) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (JPEG, PNG, GIF, SVG, WebP) are allowed'));
+    }
+  }
+});
 
 export function registerUploadsRoutes(app: Express): void {
   // GET /api/uploads/list - List all uploaded files
@@ -104,99 +129,148 @@ export function registerUploadsRoutes(app: Express): void {
   });
 
   // POST /api/uploads - Upload a new file
-  app.post("/api/uploads", async (req, res) => {
+  app.post("/api/uploads", upload.single('file'), async (req, res) => {
     try {
-      const isMultipart = req.headers["content-type"]?.includes("multipart/form-data");
+      console.log('Upload request received:', {
+        hasFile: !!req.file,
+        fileName: req.file?.originalname,
+        mimeType: req.file?.mimetype,
+        fileSize: req.file?.size,
+        hasBody: !!req.body
+      });
 
-      if (isMultipart && req.body?.file) {
-        // Handle file upload from FormData
-        const fileBuffer = Buffer.from(req.body.file.data || req.body.file, "base64");
-        const ext = path.extname(req.body.file.name || ".jpg") || ".jpg";
-        const filename = `${uuidv4()}${ext}`;
+      // Handle file upload from multer
+      if (!req.file) {
+        console.log('No file in request, checking for URL-based upload');
+        // Check if it's a URL-based upload
+        if (req.body?.url) {
+          const imageUrl = req.body.url;
+          const response = await fetch(imageUrl);
+          const arrayBuffer = await response.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
 
-        if (supabase) {
-          // Upload to Supabase
-          const { data, error } = await supabase.storage
-            .from("avatars")
-            .upload(`avatars/${filename}`, fileBuffer, {
-              contentType: req.body.file.type || "image/jpeg",
-              upsert: true
+          const contentType = response.headers.get("content-type") || "image/jpeg";
+          const ext = path.extname(imageUrl) || ".jpg";
+          const filename = `${uuidv4()}${ext}`;
+
+          if (supabase) {
+            const { data, error } = await supabase.storage
+              .from("avatars")
+              .upload(`avatars/${filename}`, buffer, {
+                contentType,
+                upsert: true
+              });
+
+            if (error) {
+              throw new Error(error.message);
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+              .from("avatars")
+              .getPublicUrl(`avatars/${filename}`);
+
+            return res.json({
+              success: true,
+              url: publicUrl,
+              filename,
+              source: 'supabase'
             });
+          } else {
+            const filePath = path.join(UPLOADS_DIR, filename);
+            fs.writeFileSync(filePath, buffer);
 
-          if (error) {
-            throw new Error(error.message);
+            return res.json({
+              success: true,
+              url: `/uploads/${filename}`,
+              filename,
+              source: 'local'
+            });
           }
-
-          const { data: { publicUrl } } = supabase.storage
-            .from("avatars")
-            .getPublicUrl(`avatars/${filename}`);
-
-          res.json({
-            success: true,
-            url: publicUrl,
-            filename,
-            source: 'supabase'
-          });
-        } else {
-          // Fallback to local storage
-          const filePath = path.join(UPLOADS_DIR, filename);
-          fs.writeFileSync(filePath, fileBuffer);
-          
-          res.json({
-            success: true,
-            url: `/uploads/avatars/${filename}`,
-            filename,
-            source: 'local'
-          });
         }
-      } else if (req.body?.url) {
-        // Handle URL-based upload (download and upload to Supabase)
-        const imageUrl = req.body.url;
-        const response = await fetch(imageUrl);
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        return res.status(400).json({ error: "No file or URL provided" });
+      }
+
+      const fileBuffer = req.file.buffer;
+      const filename = `${uuidv4()}${path.extname(req.file.originalname)}`;
+      console.log('Processing file upload:', { filename, mimetype: req.file.mimetype });
+
+      if (supabase) {
+        console.log('Uploading to Supabase storage');
         
-        // Determine content type from response
-        const contentType = response.headers.get("content-type") || "image/jpeg";
-        const ext = path.extname(imageUrl) || ".jpg";
-        const filename = `${uuidv4()}${ext}`;
-
-        if (supabase) {
-          const { data, error } = await supabase.storage
-            .from("avatars")
-            .upload(`avatars/${filename}`, buffer, {
-              contentType,
-              upsert: true
-            });
-
-          if (error) {
-            throw new Error(error.message);
-          }
-
-          const { data: { publicUrl } } = supabase.storage
-            .from("avatars")
-            .getPublicUrl(`avatars/${filename}`);
-
-          res.json({
-            success: true,
-            url: publicUrl,
-            filename,
-            source: 'supabase'
+        // Try to create the bucket if it doesn't exist (ignore errors if it already exists)
+        try {
+          await supabase.storage.createBucket('avatars', {
+            public: true,
+            allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp'],
+            fileSizeLimit: 5 * 1024 * 1024 // 5MB
           });
-        } else {
-          // Fallback to local storage
-          const filePath = path.join(UPLOADS_DIR, filename);
-          fs.writeFileSync(filePath, buffer);
-          
-          res.json({
-            success: true,
-            url: `/uploads/avatars/${filename}`,
-            filename,
-            source: 'local'
-          });
+          console.log('Created avatars bucket');
+        } catch (bucketError: any) {
+          // Bucket might already exist, continue
+          console.log('Bucket creation note:', bucketError.message);
         }
+        
+        // Upload to Supabase
+        const { data, error } = await supabase.storage
+          .from("avatars")
+          .upload(`logos/${filename}`, fileBuffer, {
+            contentType: req.file.mimetype || "image/jpeg",
+            upsert: true
+          });
+
+        if (error) {
+          console.error('Supabase upload error:', error);
+          
+          // If bucket still doesn't exist, fall back to local storage
+          if (error.message.includes('Bucket not found')) {
+            console.log('Falling back to local storage due to missing bucket');
+            const logosDir = path.join(UPLOADS_DIR, "logos");
+            if (!fs.existsSync(logosDir)) {
+              fs.mkdirSync(logosDir, { recursive: true });
+            }
+            const filePath = path.join(logosDir, filename);
+            fs.writeFileSync(filePath, fileBuffer);
+
+            console.log('Local upload successful:', filePath);
+            return res.json({
+              success: true,
+              url: `/uploads/logos/${filename}`,
+              filename,
+              source: 'local'
+            });
+          }
+          
+          throw new Error(error.message);
+        }
+
+        console.log('Supabase upload successful:', data);
+        const { data: { publicUrl } } = supabase.storage
+          .from("avatars")
+          .getPublicUrl(`logos/${filename}`);
+
+        res.json({
+          success: true,
+          url: publicUrl,
+          filename,
+          source: 'supabase'
+        });
       } else {
-        res.status(400).json({ error: "No file or URL provided" });
+        console.log('Supabase not configured, using local storage');
+        // Fallback to local storage
+        const logosDir = path.join(UPLOADS_DIR, "logos");
+        if (!fs.existsSync(logosDir)) {
+          fs.mkdirSync(logosDir, { recursive: true });
+        }
+        const filePath = path.join(logosDir, filename);
+        fs.writeFileSync(filePath, fileBuffer);
+
+        console.log('Local upload successful:', filePath);
+        res.json({
+          success: true,
+          url: `/uploads/logos/${filename}`,
+          filename,
+          source: 'local'
+        });
       }
     } catch (error: any) {
       console.error("Upload error:", error);
