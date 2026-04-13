@@ -7,6 +7,7 @@ interface AuthContextType {
   member: Member | null;
   role: Role | null;
   permissions: string[];
+  enabledModules: string[];
   isAuthenticated: boolean;
   isMemberAuthenticated: boolean;
   isLoading: boolean;
@@ -18,6 +19,7 @@ interface AuthContextType {
   canAccessRoute: (route: string) => boolean;
   refreshPermissions: () => Promise<void>;
   setPermissions: (permissions: string[]) => void;
+  isModuleEnabled: (moduleName: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -60,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SafeUser | null>(null);
   const [member, setMember] = useState<Member | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [enabledModules, setEnabledModules] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [, navigate] = useLocation();
 
@@ -78,6 +81,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Failed to fetch permissions:", error);
       // Fallback to static permissions
       setPermissions(getStaticPermissions(userRole));
+    }
+  }, []);
+
+  // Fetch enabled modules
+  const fetchEnabledModules = useCallback(async () => {
+    try {
+      const response = await fetch("/api/module-control/enabled");
+      if (response.ok) {
+        const data = await response.json();
+        setEnabledModules(data.enabledModules || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch enabled modules:", error);
+      // Default to all enabled if API fails
+      setEnabledModules([
+        "dashboard", "leads", "members", "workouts", "attendance", 
+        "payments", "trainers", "salary", "reports", "notifications", "admin", "options"
+      ]);
     }
   }, []);
 
@@ -112,8 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem("memberAuth");
       }
     }
+    // Always fetch enabled modules
+    fetchEnabledModules();
     setIsLoading(false);
-  }, [fetchPermissions]);
+  }, [fetchPermissions, fetchEnabledModules]);
 
   const refreshPermissions = async () => {
     if (user) {
@@ -183,11 +206,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return hasPermission(route);
   }, [member, hasPermission]);
 
+  const isModuleEnabled = useCallback((moduleName: string): boolean => {
+    return enabledModules.includes(moduleName);
+  }, [enabledModules]);
+
   const value: AuthContextType = {
     user,
     member,
     role: (user?.role || member ? (user?.role as Role) || "member" : null) as Role | null,
     permissions,
+    enabledModules,
     isAuthenticated: !!user,
     isMemberAuthenticated: !!member,
     isLoading,
@@ -199,6 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     canAccessRoute,
     refreshPermissions,
     setPermissions,
+    isModuleEnabled,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

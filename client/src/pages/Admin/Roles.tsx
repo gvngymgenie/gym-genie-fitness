@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Shield, Users, UserCog, Dumbbell, ClipboardList, LayoutDashboard, UserPlus, CalendarCheck, FileText, Bell, Settings, Save, Loader2, List, Banknote, CreditCard } from "lucide-react";
 import React, { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth";
 import type { Role } from "@shared/schema";
 
 const allPages = [
@@ -45,6 +46,10 @@ const Roles: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
+    const { enabledModules } = useAuth();
+
+    // Filter pages based on enabled modules
+    const availablePages = allPages.filter(page => enabledModules.includes(page.id));
 
     // Fetch permissions from API
     const fetchPermissions = useCallback(async () => {
@@ -198,47 +203,53 @@ const Roles: React.FC = () => {
                                     </div>
                                 </div>
                                 <Badge className={`${roleInfo.color} border font-bold uppercase text-xs tracking-wider`}>
-                                    {permissions[selectedRole].length} / {allPages.length} pages
+                                    {permissions[selectedRole].length} / {availablePages.length} pages
                                 </Badge>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {allPages.map((page) => {
-                                    const hasAccess = permissions[selectedRole].includes(page.id);
-                                    const PageIcon = page.icon;
-                                    const isAdmin = selectedRole === "admin" && page.id === "admin";
-                                    
-                                    return (
-                                        <div
-                                            key={page.id}
-                                            className={`flex items-center justify-between p-4 rounded-lg border transition-all ${
-                                                hasAccess
-                                                    ? "bg-primary/5 border-primary/30"
-                                                    : "bg-muted/30 border-border"
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className={`p-2 rounded-lg ${hasAccess ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
-                                                    <PageIcon className="h-4 w-4" />
+                            {availablePages.length === 0 ? (
+                                <div className="text-center py-8 text-muted-foreground">
+                                    <p>No modules are currently enabled. Use the Superadmin Terminal (Ctrl+Shift+M) to enable modules.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {availablePages.map((page) => {
+                                        const hasAccess = permissions[selectedRole].includes(page.id);
+                                        const PageIcon = page.icon;
+                                        const isAdmin = selectedRole === "admin" && page.id === "admin";
+
+                                        return (
+                                            <div
+                                                key={page.id}
+                                                className={`flex items-center justify-between p-4 rounded-lg border transition-all ${
+                                                    hasAccess
+                                                        ? "bg-primary/5 border-primary/30"
+                                                        : "bg-muted/30 border-border"
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`p-2 rounded-lg ${hasAccess ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
+                                                        <PageIcon className="h-4 w-4" />
+                                                    </div>
+                                                    <div>
+                                                        <Label className={`font-semibold ${hasAccess ? "text-foreground" : "text-muted-foreground"}`}>
+                                                            {page.label}
+                                                        </Label>
+                                                        <p className="text-xs text-muted-foreground">{page.description}</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <Label className={`font-semibold ${hasAccess ? "text-foreground" : "text-muted-foreground"}`}>
-                                                        {page.label}
-                                                    </Label>
-                                                    <p className="text-xs text-muted-foreground">{page.description}</p>
-                                                </div>
+                                                <Switch
+                                                    checked={hasAccess}
+                                                    onCheckedChange={() => togglePermission(page.id)}
+                                                    disabled={isAdmin}
+                                                    data-testid={`switch-${selectedRole}-${page.id}`}
+                                                />
                                             </div>
-                                            <Switch
-                                                checked={hasAccess}
-                                                onCheckedChange={() => togglePermission(page.id)}
-                                                disabled={isAdmin}
-                                                data-testid={`switch-${selectedRole}-${page.id}`}
-                                            />
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
 
                             <div className="flex gap-3 mt-6 pt-6 border-t border-border">
                                 <Button

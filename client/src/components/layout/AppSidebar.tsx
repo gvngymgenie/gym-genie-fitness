@@ -66,8 +66,8 @@ const getRoleBadgeColor = (role: string) => {
 export function AppSidebar() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, logout, role, permissions, setPermissions } = useAuth();
-  
+  const { user, logout, role, permissions, setPermissions, isModuleEnabled } = useAuth();
+
   // Fetch fresh permissions from API only for non-admin roles
   useEffect(() => {
     const fetchFreshPermissions = async () => {
@@ -87,29 +87,37 @@ export function AppSidebar() {
     fetchFreshPermissions();
   }, [user?.role, setPermissions]);
 
-  // Memoize sidebar items based on role and permissions
+  // Memoize sidebar items based on role, permissions, and enabled modules
   const sidebarItems = useMemo(() => {
-    // Admin always has full access - bypass all permission checks
+    // Admin always has full access - but still respect module control
+    const baseItems = allSidebarItems.filter(item => {
+      // First check if module is enabled (superadmin control)
+      if (!isModuleEnabled(item.permission)) {
+        return false;
+      }
+      return true;
+    });
+
     if (role === "admin") {
-      return allSidebarItems;
+      return baseItems;
     }
-    
+
     // For non-admin roles, filter by role and permissions
-    return allSidebarItems.filter(item => {
+    return baseItems.filter(item => {
       // First check if user's role is allowed for this item
       if (!item.roles.includes(role as Role)) {
         return false;
       }
-      
+
       // Check if user has the specific permission
       if (permissions.length > 0) {
         return permissions.includes(item.permission);
       }
-      
+
       // If no permissions loaded yet, allow based on role only
       return true;
     });
-  }, [role, permissions]);
+  }, [role, permissions, isModuleEnabled]);
 
   const handleLogout = () => {
     logout();

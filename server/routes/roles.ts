@@ -56,22 +56,33 @@ export function registerRoleRoutes(app: Express) {
     try {
       const allPermissions = await storage.getRolePermissions();
       const staticPermissions = rolePermissions;
-      
+
+      // Get enabled modules to filter available pages
+      const enabledModules = await storage.getEnabledModules();
+
+      const allPages = [
+        { id: "dashboard", label: "Dashboard" },
+        { id: "leads", label: "Leads" },
+        { id: "members", label: "Members" },
+        { id: "attendance", label: "Attendance" },
+        { id: "workouts", label: "Workouts & Diet" },
+        { id: "payments", label: "Payments" },
+        { id: "trainers", label: "Personal Trainers" },
+        { id: "salary", label: "Trainer Salary" },
+        { id: "reports", label: "Reports" },
+        { id: "notifications", label: "Notifications" },
+        { id: "admin", label: "Admin Settings" },
+        { id: "options", label: "Options" },
+      ];
+
+      // Filter pages based on enabled modules
+      const availablePages = allPages.filter(page => enabledModules.includes(page.id));
+
       res.json({
         allPermissions,
         staticPermissions,
-        availablePages: [
-          { id: "dashboard", label: "Dashboard" },
-          { id: "leads", label: "Leads" },
-          { id: "members", label: "Members" },
-          { id: "attendance", label: "Attendance" },
-          { id: "workouts", label: "Workouts & Diet" },
-          { id: "payments", label: "Payments" },
-          { id: "trainers", label: "Personal Trainers" },
-          { id: "reports", label: "Reports" },
-          { id: "notifications", label: "Notifications" },
-          { id: "admin", label: "Admin Settings" },
-        ]
+        availablePages,
+        enabledModules
       });
     } catch (error) {
       console.error("Failed to fetch permissions:", error);

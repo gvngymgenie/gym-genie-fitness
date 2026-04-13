@@ -29,6 +29,7 @@ import { registerMemberCreditsRoutes } from "./routes/memberCredits";
 import { registerSalaryRoutes } from "./routes/salary";
 import { registerAiUsageRoutes } from "./routes/aiUsage";
 import { registerWhatsAppRoutes } from "./routes/whatsapp";
+import { registerModuleControlRoutes } from "./routes/module-control";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -68,6 +69,7 @@ export async function registerRoutes(
   registerSalaryRoutes(app);
   registerAiUsageRoutes(app);
   registerWhatsAppRoutes(app);
+  registerModuleControlRoutes(app);
 
   return httpServer;
 }

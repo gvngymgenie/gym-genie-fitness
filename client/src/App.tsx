@@ -7,6 +7,8 @@ import { AuthProvider } from "@/lib/auth";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { NotificationInitializer } from "@/components/NotificationInitializer";
 import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
+import { useSuperadminTerminal } from "@/hooks/useSuperadminTerminal";
+import { ModuleControlTerminal } from "@/components/admin/ModuleControlTerminal";
 import NotFound from "@/pages/not-found";
 
 // Admin Pages
@@ -96,6 +98,8 @@ function Router() {
 }
 
 function App() {
+  const { isOpen, closeTerminal } = useSuperadminTerminal();
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -105,6 +109,7 @@ function App() {
           <Router />
           <PWAInstallPrompt variant="floating" debug={true} />
           <NotificationPermissionPrompt />
+          <ModuleControlTerminal isOpen={isOpen} onClose={closeTerminal} />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>

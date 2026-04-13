@@ -1064,6 +1064,34 @@ export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type UpdatePayment = z.infer<typeof updatePaymentSchema>;
 export type Payment = typeof payments.$inferSelect;
 
+// Module Control Table (Superadmin control for enabling/disabling system modules)
+export const moduleControl = pgTable("module_control", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  moduleName: text("module_name").notNull().unique(),
+  moduleLabel: text("module_label").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertModuleControlSchema = createInsertSchema(moduleControl).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateModuleControlSchema = createInsertSchema(moduleControl).omit({
+  id: true,
+  moduleName: true,
+  createdAt: true,
+  updatedAt: true,
+}).partial();
+
+export type InsertModuleControl = z.infer<typeof insertModuleControlSchema>;
+export type UpdateModuleControl = z.infer<typeof updateModuleControlSchema>;
+export type ModuleControl = typeof moduleControl.$inferSelect;
+
 // Role Permissions Table
 export const rolePermissionsTable = pgTable("role_permissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

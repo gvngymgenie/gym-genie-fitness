@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import { db as drizzleDb } from "./db";
-import { eq, and, desc, inArray } from "drizzle-orm";
-import type { User, SafeUser, InsertUser, UpdateUser, MembershipPlan, InsertPlan, UpdatePlan, InventoryItem, InsertInventory, UpdateInventory, Lead, InsertLead, UpdateLead, Member, InsertMember, UpdateMember, CompanySettings, InsertCompanySettings, UpdateCompanySettings, Branch, InsertBranch, UpdateBranch, Attendance, InsertAttendance, StaffAttendance, InsertStaffAttendance, TrainerSalaryConfig, InsertTrainerSalaryConfig, UpdateTrainerSalaryConfig, TrainerPayout, InsertTrainerPayout, UpdateTrainerPayout, TrainerPayoutLineItem, InsertTrainerPayoutLineItem, WorkoutProgram, InsertWorkoutProgram, UpdateWorkoutProgram, DietPlan, InsertDietPlan, UpdateDietPlan, WorkoutProgramAssignment, InsertWorkoutProgramAssignment, DietPlanAssignment, InsertDietPlanAssignment, TrainerProfile, InsertTrainerProfile, UpdateTrainerProfile, TrainerAvailability, InsertTrainerAvailability, TrainerBooking, InsertTrainerBooking, UpdateTrainerBooking, TrainerFeedback, InsertTrainerFeedback, MemberOtp, InsertMemberOtp, BmiRecord, InsertBmiRecord, MemberMeasurement, InsertMemberMeasurement, UpdateMemberMeasurement, Notification, InsertNotification, UpdateNotification, PushSubscription, InsertPushSubscription, RolePermission } from "@shared/schema";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import type { User, SafeUser, InsertUser, UpdateUser, MembershipPlan, InsertPlan, UpdatePlan, InventoryItem, InsertInventory, UpdateInventory, Lead, InsertLead, UpdateLead, Member, InsertMember, UpdateMember, CompanySettings, InsertCompanySettings, UpdateCompanySettings, Branch, InsertBranch, UpdateBranch, Attendance, InsertAttendance, StaffAttendance, InsertStaffAttendance, TrainerSalaryConfig, InsertTrainerSalaryConfig, UpdateTrainerSalaryConfig, TrainerPayout, InsertTrainerPayout, UpdateTrainerPayout, TrainerPayoutLineItem, InsertTrainerPayoutLineItem, WorkoutProgram, InsertWorkoutProgram, UpdateWorkoutProgram, DietPlan, InsertDietPlan, UpdateDietPlan, WorkoutProgramAssignment, InsertWorkoutProgramAssignment, DietPlanAssignment, InsertDietPlanAssignment, TrainerProfile, InsertTrainerProfile, UpdateTrainerProfile, TrainerAvailability, InsertTrainerAvailability, TrainerBooking, InsertTrainerBooking, UpdateTrainerBooking, TrainerFeedback, InsertTrainerFeedback, MemberOtp, InsertMemberOtp, BmiRecord, InsertBmiRecord, MemberMeasurement, InsertMemberMeasurement, UpdateMemberMeasurement, Notification, InsertNotification, UpdateNotification, PushSubscription, InsertPushSubscription, RolePermission, ModuleControl, InsertModuleControl, UpdateModuleControl } from "@shared/schema";
 import * as schema from "../shared/schema";
 import { transformMemberToCamelCase } from "./db";
 
@@ -165,6 +165,14 @@ export interface IStorage {
   updateRolePermissions(role: string, permissions: string[]): Promise<RolePermission | null>;
   upsertRolePermissions(role: string, permissions: string[]): Promise<RolePermission>;
   seedRolePermissions(): Promise<void>;
+  // Module Control (Superadmin)
+  getAllModuleControls(): Promise<ModuleControl[]>;
+  getModuleControl(moduleName: string): Promise<ModuleControl | null>;
+  updateModuleControl(moduleName: string, updates: UpdateModuleControl): Promise<ModuleControl | null>;
+  upsertModuleControl(moduleControl: InsertModuleControl): Promise<ModuleControl>;
+  seedModuleControls(): Promise<void>;
+  getEnabledModules(): Promise<string[]>;
+  isModuleEnabled(moduleName: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1428,6 +1436,90 @@ export class DatabaseStorage implements IStorage {
         });
       }
     }
+  }
+
+  // Module Control (Superadmin)
+  async getAllModuleControls(): Promise<ModuleControl[]> {
+    return await drizzleDb.select().from(schema.moduleControl).orderBy(schema.moduleControl.moduleName);
+  }
+
+  async getModuleControl(moduleName: string): Promise<ModuleControl | null> {
+    const [result] = await drizzleDb.select()
+      .from(schema.moduleControl)
+      .where(eq(schema.moduleControl.moduleName, moduleName));
+    return result || null;
+  }
+
+  async updateModuleControl(moduleName: string, updates: UpdateModuleControl): Promise<ModuleControl | null> {
+    const [updated] = await drizzleDb.update(schema.moduleControl)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.moduleControl.moduleName, moduleName))
+      .returning();
+    return updated || null;
+  }
+
+  async upsertModuleControl(moduleControl: InsertModuleControl): Promise<ModuleControl> {
+    const [created] = await drizzleDb.insert(schema.moduleControl)
+      .values(moduleControl)
+      .onConflictDoUpdate({
+        target: schema.moduleControl.moduleName,
+        set: {
+          ...moduleControl,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return created;
+  }
+
+  async seedModuleControls(): Promise<void> {
+    // Create table if it doesn't exist
+    await drizzleDb.execute(sql`
+      CREATE TABLE IF NOT EXISTS module_control (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        module_name TEXT NOT NULL UNIQUE,
+        module_label TEXT NOT NULL,
+        enabled BOOLEAN NOT NULL DEFAULT true,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+
+    const defaultModules = [
+      { moduleName: 'dashboard', moduleLabel: 'Dashboard', description: 'Main dashboard view' },
+      { moduleName: 'leads', moduleLabel: 'Leads', description: 'Lead management' },
+      { moduleName: 'members', moduleLabel: 'Members', description: 'Member management' },
+      { moduleName: 'attendance', moduleLabel: 'Attendance', description: 'Attendance tracking' },
+      { moduleName: 'workouts', moduleLabel: 'Workouts & Diet', description: 'Workout and diet management' },
+      { moduleName: 'payments', moduleLabel: 'Payments', description: 'Payment management' },
+      { moduleName: 'trainers', moduleLabel: 'Personal Trainers', description: 'Trainer management' },
+      { moduleName: 'salary', moduleLabel: 'Trainer Salary', description: 'Trainer salary management' },
+      { moduleName: 'reports', moduleLabel: 'Reports', description: 'Reports and analytics' },
+      { moduleName: 'notifications', moduleLabel: 'Notifications', description: 'Notification management' },
+      { moduleName: 'admin', moduleLabel: 'Admin Settings', description: 'Admin settings and configuration' },
+      { moduleName: 'options', moduleLabel: 'Options', description: 'System options and preferences' },
+    ];
+
+    for (const mod of defaultModules) {
+      const existing = await this.getModuleControl(mod.moduleName);
+      if (!existing) {
+        await drizzleDb.insert(schema.moduleControl).values(mod);
+      }
+    }
+  }
+
+  async getEnabledModules(): Promise<string[]> {
+    const modules = await this.getAllModuleControls();
+    return modules.filter(m => m.enabled).map(m => m.moduleName);
+  }
+
+  async isModuleEnabled(moduleName: string): Promise<boolean> {
+    const module = await this.getModuleControl(moduleName);
+    return module?.enabled ?? false;
   }
 }
 
