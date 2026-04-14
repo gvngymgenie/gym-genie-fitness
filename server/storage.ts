@@ -1490,6 +1490,7 @@ export class DatabaseStorage implements IStorage {
     `);
 
     const defaultModules = [
+      // Main modules
       { moduleName: 'dashboard', moduleLabel: 'Dashboard', description: 'Main dashboard view' },
       { moduleName: 'leads', moduleLabel: 'Leads', description: 'Lead management' },
       { moduleName: 'members', moduleLabel: 'Members', description: 'Member management' },
@@ -1500,8 +1501,17 @@ export class DatabaseStorage implements IStorage {
       { moduleName: 'salary', moduleLabel: 'Trainer Salary', description: 'Trainer salary management' },
       { moduleName: 'reports', moduleLabel: 'Reports', description: 'Reports and analytics' },
       { moduleName: 'notifications', moduleLabel: 'Notifications', description: 'Notification management' },
-      { moduleName: 'admin', moduleLabel: 'Admin Settings', description: 'Admin settings and configuration' },
       { moduleName: 'options', moduleLabel: 'Options', description: 'System options and preferences' },
+      // Admin sub-modules
+      { moduleName: 'admin-plans', moduleLabel: 'Membership Plans', description: 'Manage membership plans' },
+      { moduleName: 'admin-staff', moduleLabel: 'Staff Management', description: 'Manage staff members' },
+      { moduleName: 'admin-roles', moduleLabel: 'Roles & Permissions', description: 'Manage roles and permissions' },
+      { moduleName: 'admin-inventory', moduleLabel: 'Inventory', description: 'Manage inventory' },
+      { moduleName: 'admin-merchandise', moduleLabel: 'Merchandise', description: 'Manage merchandise' },
+      { moduleName: 'admin-revenue', moduleLabel: 'Revenue', description: 'Revenue reports' },
+      { moduleName: 'admin-ai-usage', moduleLabel: 'AI Usage', description: 'AI usage tracking' },
+      { moduleName: 'admin-account', moduleLabel: 'Account Settings', description: 'Account settings' },
+      { moduleName: 'admin-uploads', moduleLabel: 'Uploads', description: 'Manage uploads' },
     ];
 
     for (const mod of defaultModules) {

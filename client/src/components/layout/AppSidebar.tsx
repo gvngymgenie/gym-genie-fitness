@@ -16,6 +16,16 @@ import {
   Shield,
   List,
   Banknote,
+  ChevronDown,
+  ChevronRight,
+  CreditCard as CreditCardIcon,
+  UserCheck,
+  Package,
+  ShoppingBag,
+  TrendingUp,
+  Brain,
+  UserCircle,
+  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo } from "react";
@@ -49,8 +59,17 @@ const allSidebarItems = [
   { icon: Banknote, label: "Trainer Salary", href: "/salary", permission: "salary" as const, roles: ["admin", "manager"] as Role[] },
   { icon: FileText, label: "Reports", href: "/reports", permission: "reports" as const, roles: ["admin", "manager"] as Role[] },
   { icon: Bell, label: "Notifications", href: "/notifications", permission: "notifications" as const, roles: ["admin", "manager", "trainer", "staff"] as Role[] },
-  { icon: Settings, label: "Admin", href: "/admin/plans", permission: "admin" as const, roles: ["admin"] as Role[] },
-  { icon: List, label: "Options", href: "/admin/options", permission: "admin" as const, roles: ["admin"] as Role[] },
+  { icon: List, label: "Options", href: "/admin/options", permission: "options" as const, roles: ["admin"] as Role[] },
+  // Admin sub-pages
+  { icon: CreditCardIcon, label: "Membership Plans", href: "/admin/plans", permission: "admin-plans" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+  { icon: UserCheck, label: "Staff Management", href: "/admin/staff", permission: "admin-staff" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+  { icon: Shield, label: "Roles & Permissions", href: "/admin/roles", permission: "admin-roles" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+  { icon: Package, label: "Inventory", href: "/admin/inventory", permission: "admin-inventory" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+  { icon: ShoppingBag, label: "Merchandise", href: "/admin/merchandise", permission: "admin-merchandise" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+  { icon: TrendingUp, label: "Revenue", href: "/admin/revenue", permission: "admin-revenue" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+  { icon: Brain, label: "AI Usage", href: "/admin/ai-usage", permission: "admin-ai-usage" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+  { icon: UserCircle, label: "Account Settings", href: "/admin/account", permission: "admin-account" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+  { icon: Upload, label: "Uploads", href: "/admin/uploads", permission: "admin-uploads" as const, roles: ["admin"] as Role[], parent: "admin" as const },
 ];
 
 const getRoleBadgeColor = (role: string) => {
@@ -66,6 +85,7 @@ const getRoleBadgeColor = (role: string) => {
 export function AppSidebar() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const { user, logout, role, permissions, setPermissions, isModuleEnabled, companyName, companyLogo } = useAuth();
 
   // Fetch fresh permissions from API only for non-admin roles
@@ -87,36 +107,58 @@ export function AppSidebar() {
     fetchFreshPermissions();
   }, [user?.role, setPermissions]);
 
+  // Auto-open admin menu when on admin pages
+  useEffect(() => {
+    if (location.startsWith("/admin")) {
+      setAdminMenuOpen(true);
+    }
+  }, [location]);
+
   // Memoize sidebar items based on role, permissions, and enabled modules
   const sidebarItems = useMemo(() => {
-    // Admin always has full access - but still respect module control
-    const baseItems = allSidebarItems.filter(item => {
-      // First check if module is enabled (superadmin control)
+    // Separate admin sub-pages from main items
+    const mainItems = allSidebarItems.filter(item => !item.parent);
+    const adminSubItems = allSidebarItems.filter(item => item.parent === "admin");
+
+    // Filter main items by module control
+    const filteredMainItems = mainItems.filter(item => {
       if (!isModuleEnabled(item.permission)) {
         return false;
       }
       return true;
     });
 
+    // Filter admin sub-items by module control
+    const filteredAdminSubItems = adminSubItems.filter(item => {
+      return isModuleEnabled(item.permission);
+    });
+
     if (role === "admin") {
-      return baseItems;
+      return { mainItems: filteredMainItems, adminSubItems: filteredAdminSubItems };
     }
 
     // For non-admin roles, filter by role and permissions
-    return baseItems.filter(item => {
-      // First check if user's role is allowed for this item
+    const roleFilteredMainItems = filteredMainItems.filter(item => {
       if (!item.roles.includes(role as Role)) {
         return false;
       }
-
-      // Check if user has the specific permission
       if (permissions.length > 0) {
         return permissions.includes(item.permission);
       }
-
-      // If no permissions loaded yet, allow based on role only
       return true;
     });
+
+    const roleFilteredAdminSubItems = filteredAdminSubItems.filter(item => {
+      if (!item.roles.includes(role as Role)) {
+        return false;
+      }
+      if (permissions.length > 0) {
+        return permissions.includes(item.permission);
+      }
+      return true;
+    });
+
+    return { mainItems: roleFilteredMainItems, adminSubItems: roleFilteredAdminSubItems };
   }, [role, permissions, isModuleEnabled]);
 
   const handleLogout = () => {
@@ -178,32 +220,83 @@ export function AppSidebar() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            sidebarItems.map((item) => {
-              const isActive = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
-              return (
-                <Link key={item.href} href={item.href}>
-                  <div
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 cursor-pointer group",
-                      isActive
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_0_15px_rgba(59,130,246,0.5)]"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-accent",
-                    )}
-                    data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-                  >
-                    <item.icon
+            <>
+              {/* Main sidebar items */}
+              {sidebarItems.mainItems.map((item) => {
+                const isActive = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <div
                       className={cn(
-                        "h-5 w-5",
+                        "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 cursor-pointer group",
                         isActive
-                          ? "text-sidebar-primary-foreground"
-                          : "text-muted-foreground group-hover:text-accent",
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-accent",
                       )}
-                    />
-                    <span className="font-medium">{item.label}</span>
-                  </div>
-                </Link>
-              );
-            })
+                      data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                    >
+                      <item.icon
+                        className={cn(
+                          "h-5 w-5",
+                          isActive
+                            ? "text-sidebar-primary-foreground"
+                            : "text-muted-foreground group-hover:text-accent",
+                        )}
+                      />
+                      <span className="font-medium">{item.label}</span>
+                    </div>
+                  </Link>
+                );
+              })}
+
+              {/* Admin collapsible menu */}
+              {sidebarItems.adminSubItems.length > 0 && (
+                <div className="pt-2">
+                  <button
+                    onClick={() => setAdminMenuOpen(!adminMenuOpen)}
+                    className="flex items-center gap-3 px-4 py-3 w-full rounded-lg transition-all duration-200 cursor-pointer group text-sidebar-foreground hover:bg-sidebar-accent hover:text-accent"
+                  >
+                    <Settings className="h-5 w-5 text-muted-foreground group-hover:text-accent" />
+                    <span className="font-medium flex-1 text-left">Admin</span>
+                    {adminMenuOpen ? (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+
+                  {adminMenuOpen && (
+                    <div className="ml-6 mt-1 space-y-1 border-l-2 border-sidebar-border/50 pl-3">
+                      {sidebarItems.adminSubItems.map((item) => {
+                        const isActive = location === item.href || location.startsWith(item.href);
+                        return (
+                          <Link key={item.href} href={item.href}>
+                            <div
+                              className={cn(
+                                "flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 cursor-pointer group text-sm",
+                                isActive
+                                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_0_10px_rgba(59,130,246,0.3)]"
+                                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-accent",
+                              )}
+                            >
+                              <item.icon
+                                className={cn(
+                                  "h-4 w-4",
+                                  isActive
+                                    ? "text-sidebar-primary-foreground"
+                                    : "text-muted-foreground group-hover:text-accent",
+                                )}
+                              />
+                              <span className="font-medium">{item.label}</span>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </nav>
 
@@ -251,32 +344,84 @@ export function AppSidebar() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
               ) : (
-                sidebarItems.map((item) => {
-                  const isActive = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
-                  return (
-                    <Link key={item.href} href={item.href}>
-                      <div
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={cn(
-                          "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 cursor-pointer group",
-                          isActive
-                            ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_0_15px_rgba(59,130,246,0.5)]"
-                            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-accent",
-                        )}
-                      >
-                        <item.icon
+                <>
+                  {/* Main sidebar items */}
+                  {sidebarItems.mainItems.map((item) => {
+                    const isActive = location === item.href || (item.href !== "/dashboard" && location.startsWith(item.href));
+                    return (
+                      <Link key={item.href} href={item.href}>
+                        <div
+                          onClick={() => setMobileMenuOpen(false)}
                           className={cn(
-                            "h-5 w-5",
+                            "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 cursor-pointer group",
                             isActive
-                              ? "text-sidebar-primary-foreground"
-                              : "text-muted-foreground group-hover:text-accent",
+                              ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+                              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-accent",
                           )}
-                        />
-                        <span className="font-medium">{item.label}</span>
-                      </div>
-                    </Link>
-                  );
-                })
+                        >
+                          <item.icon
+                            className={cn(
+                              "h-5 w-5",
+                              isActive
+                                ? "text-sidebar-primary-foreground"
+                                : "text-muted-foreground group-hover:text-accent",
+                            )}
+                          />
+                          <span className="font-medium">{item.label}</span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+
+                  {/* Admin collapsible menu */}
+                  {sidebarItems.adminSubItems.length > 0 && (
+                    <div className="pt-2">
+                      <button
+                        onClick={() => setAdminMenuOpen(!adminMenuOpen)}
+                        className="flex items-center gap-3 px-4 py-3 w-full rounded-lg transition-all duration-200 cursor-pointer group text-sidebar-foreground hover:bg-sidebar-accent hover:text-accent"
+                      >
+                        <Settings className="h-5 w-5 text-muted-foreground group-hover:text-accent" />
+                        <span className="font-medium flex-1 text-left">Admin</span>
+                        {adminMenuOpen ? (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </button>
+
+                      {adminMenuOpen && (
+                        <div className="ml-6 mt-1 space-y-1 border-l-2 border-sidebar-border/50 pl-3">
+                          {sidebarItems.adminSubItems.map((item) => {
+                            const isActive = location === item.href || location.startsWith(item.href);
+                            return (
+                              <Link key={item.href} href={item.href}>
+                                <div
+                                  onClick={() => setMobileMenuOpen(false)}
+                                  className={cn(
+                                    "flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 cursor-pointer group text-sm",
+                                    isActive
+                                      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_0_10px_rgba(59,130,246,0.3)]"
+                                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-accent",
+                                  )}
+                                >
+                                  <item.icon
+                                    className={cn(
+                                      "h-4 w-4",
+                                      isActive
+                                        ? "text-sidebar-primary-foreground"
+                                        : "text-muted-foreground group-hover:text-accent",
+                                    )}
+                                  />
+                                  <span className="font-medium">{item.label}</span>
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </nav>
 
