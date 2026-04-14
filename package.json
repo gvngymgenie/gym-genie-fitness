@@ -14,7 +14,11 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "fix:static-urls": "node script/fix-static-urls.js"
+    "fix:static-urls": "node script/fix-static-urls.js",
+    "deploy:client1": "./deploy-vercel-client1.sh",
+    "deploy:client2": "./deploy-vercel-client2.sh",
+    "deploy:both": "./deploy-vercel-both.sh",
+    "deploy:setup-client2": "./deploy-vercel-setup-client2.sh"
   },
   "scripts-description": {
     "dev": "Start backend API server only (port 5000)",

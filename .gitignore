@@ -49,3 +49,4 @@ next-env.d.ts
 .env.example
 .qwen/settings.json
 .qwen/settings.json.orig
+.env.production.client2
