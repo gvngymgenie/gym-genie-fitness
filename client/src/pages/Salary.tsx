@@ -21,7 +21,7 @@ import type { SafeUser, TrainerSalaryConfig, TrainerPayout } from "@shared/schem
 // Set to false when real data is available. Mock entries are clearly marked
 // and can be safely deleted individually without breaking the page.
 // ============================================================================
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 const MOCK_TRAINERS: SafeUser[] = USE_MOCK_DATA ? [
   { id: "mock-trainer-1", username: "rahul.sharma", role: "trainer", firstName: "Rahul", lastName: "Sharma", phone: "+91 9962017899", email: "rahul@gym.com", isActive: true, createdAt: new Date("2024-01-15") },

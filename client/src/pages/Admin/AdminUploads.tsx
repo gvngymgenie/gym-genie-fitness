@@ -249,7 +249,7 @@ export default function AdminUploads() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2">
                 <Cloud className="h-5 w-5 text-blue-500" />
-                Supabase Storage
+                Cloud Storage
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -291,7 +291,7 @@ export default function AdminUploads() {
                   <span className="font-medium">{localFiles.filter((f: UploadedFile) => f.source === 'local').length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Supabase Files</span>
+                  <span className="text-muted-foreground">Cloud Files</span>
                   <span className="font-medium">{localFiles.filter((f: UploadedFile) => f.source === 'supabase').length}</span>
                 </div>
                 <Button 
@@ -458,23 +458,23 @@ export default function AdminUploads() {
         </Card>
 
         {/* Migration Helper */}
-        <Card className="bg-muted/50">
+        {/* <Card className="bg-muted/50">
           <CardHeader>
             <CardTitle className="text-lg">Need Help?</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm">
-              <p><strong>Supabase Storage:</strong> All new uploads automatically go to Supabase.</p>
+              <p><strong>Cloud Storage:</strong> All new uploads automatically go to Cloud storage.</p>
               <p><strong>Local Storage:</strong> Legacy uploads remain in local storage.</p>
               <p className="text-muted-foreground">
-                Run migration scripts to move local files to Supabase:
+                Run migration scripts to move local files to Cloud:
               </p>
               <code className="block bg-background p-2 rounded mt-2 text-xs">
                 npx tsx script/migrate-avatars-to-supabase.ts
               </code>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
           </TabsContent>
 
           {/* Payslips Tab */}
@@ -638,7 +638,7 @@ export default function AdminUploads() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 text-sm">
-                  <p><strong>Storage Location:</strong> All payslips are stored in Supabase Storage in the "payslips" bucket.</p>
+                  <p><strong>Storage Location:</strong> All payslips are stored in cloud Storage in the "payslips" bucket.</p>
                   <p><strong>Organization:</strong> Files are organized by trainer ID for easy management.</p>
                   <p><strong>Generation:</strong> Payslips are generated as PDFs from the Salary Management page when you click "Generate & Upload Payslip".</p>
                   <p className="text-muted-foreground">
