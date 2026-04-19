@@ -84,15 +84,12 @@ export function registerSalaryRoutes(app: Express) {
 
       // Count attendance days for the month
       const daysInMonth = getDaysInMonth(month, year);
-      let attendanceDays = 0;
-      for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-        const records = await storage.getStaffAttendanceByDate(dateStr);
-        const trainerRecords = records.filter(r => r.personId === trainerId);
-        if (trainerRecords.length > 0) {
-          attendanceDays++;
-        }
-      }
+      const allAttendance = await storage.getStaffAttendanceByPerson(trainerId);
+      const monthAttendance = allAttendance.filter(r => {
+        const recordDate = new Date(r.date);
+        return recordDate.getMonth() + 1 === month && recordDate.getFullYear() === year;
+      });
+      const attendanceDays = monthAttendance.length;
 
       // Count completed coaching sessions for the month
       const bookings = await storage.getTrainerBookingsByMonth(trainerId, month, year);

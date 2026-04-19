@@ -78,8 +78,9 @@ export function registerPaymentRoutes(app: Express) {
           : (member.totalDue || 0);
         
         // Get the most recent discount percentage
-        const discountPercentage = sortedPayments.length > 0 
-          ? (sortedPayments[0].discountPercentage || 0)
+        const paymentDiscount = sortedPayments.length > 0 ? sortedPayments[0].discountPercentage : undefined;
+        const discountPercentage = (paymentDiscount !== undefined && paymentDiscount >= 0)
+          ? paymentDiscount
           : (member.discount || 0);
         
         // Calculate actual amount due after discount

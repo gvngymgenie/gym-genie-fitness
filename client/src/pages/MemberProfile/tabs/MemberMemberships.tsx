@@ -93,7 +93,11 @@ export function MemberMemberships({ memberId }: MemberProfileProps) {
     );
     
     const currentOriginalAmount = sortedPayments[0]?.originalAmount || member.totalDue || 0;
-    const currentDiscount = sortedPayments[0]?.discountPercentage || member.discount || 0;
+    const paymentDiscount = sortedPayments[0]?.discountPercentage;
+    const rawDiscount = (paymentDiscount != null && paymentDiscount >= 0) 
+      ? paymentDiscount 
+      : (member.discount ?? 0);
+    const currentDiscount = Math.min(100, Math.max(0, rawDiscount));
     const actualAmountDue = Math.round(currentOriginalAmount * (1 - currentDiscount / 100));
     const balance = actualAmountDue - totalPaid;
     
@@ -714,7 +718,11 @@ export function MemberMemberships({ memberId }: MemberProfileProps) {
                       return paidPayments.map((p, index) => {
                         runningPaid += p.amount || 0;
                         runningOriginal = p.originalAmount || 0;
-                        const currentDiscount = p.discountPercentage || 0;
+                        const paymentDiscount = p.discountPercentage;
+                        const rawDiscount = (paymentDiscount != null && paymentDiscount >= 0) 
+                          ? paymentDiscount 
+                          : 0;
+                        const currentDiscount = Math.min(100, Math.max(0, rawDiscount));
                         const currentTotalDue = Math.round(runningOriginal * (1 - currentDiscount / 100));
                         const runningBalance = currentTotalDue - runningPaid;
                         const isLastPayment = index === paidPayments.length - 1;

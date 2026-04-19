@@ -172,6 +172,7 @@ export default function SalaryPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/salary/config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/salary/calculate"] });
       toast({ title: "Salary config saved" });
     },
     onError: (error: any) => {
@@ -182,6 +183,18 @@ export default function SalaryPage() {
   const handleSaveConfig = () => {
     saveConfigMutation.mutate(configForm);
   };
+
+  // Refresh data when tab changes - use refetch to ensure fresh data
+  const [lastRefreshTab, setLastRefreshTab] = useState("");
+  
+  useEffect(() => {
+    if (selectedTrainerId && activeTab && activeTab !== lastRefreshTab) {
+      queryClient.invalidateQueries({ queryKey: ["/api/salary/config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/salary/calculate"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/salary/payouts"] });
+      setLastRefreshTab(activeTab);
+    }
+  }, [activeTab, selectedTrainerId, queryClient, lastRefreshTab]);
 
   // Calculate payout preview
   const { data: payoutPreview, isLoading: isLoadingPreview } = useQuery<any>({
