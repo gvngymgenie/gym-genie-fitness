@@ -83,6 +83,7 @@ export interface IStorage {
   getAllPayouts(filters: { trainerId?: string; month?: number; year?: number }): Promise<TrainerPayout[]>;
   createPayout(payout: InsertTrainerPayout): Promise<TrainerPayout>;
   updatePayout(id: string, payout: UpdateTrainerPayout): Promise<TrainerPayout | undefined>;
+  deletePayout(id: string): Promise<boolean>;
   getPayoutLineItems(payoutId: string): Promise<TrainerPayoutLineItem[]>;
   createPayoutLineItem(item: InsertTrainerPayoutLineItem): Promise<TrainerPayoutLineItem>;
   deletePayoutLineItems(payoutId: string): Promise<boolean>;
@@ -808,6 +809,11 @@ export class DatabaseStorage implements IStorage {
 
   async deletePayoutLineItems(payoutId: string): Promise<boolean> {
     const result = await drizzleDb.delete(schema.trainerPayoutLineItems).where(eq(schema.trainerPayoutLineItems.payoutId, payoutId)).returning();
+    return result.length > 0;
+  }
+
+  async deletePayout(id: string): Promise<boolean> {
+    const result = await drizzleDb.delete(schema.trainerPayouts).where(eq(schema.trainerPayouts.id, id)).returning();
     return result.length > 0;
   }
 

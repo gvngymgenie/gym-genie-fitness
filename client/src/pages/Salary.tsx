@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, DollarSign, TrendingUp, Users, Star, CalendarDays, Eye, CheckCircle, Clock, Receipt, IndianRupee, FileDown, MessageCircle, X, Link as LinkIcon } from "lucide-react";
+import { Loader2, DollarSign, TrendingUp, Users, Star, CalendarDays, Eye, CheckCircle, Clock, Receipt, IndianRupee, FileDown, MessageCircle, X, Link as LinkIcon, AlertTriangle } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import { PayslipPDF } from "@/components/PayslipPDF";
 import type { SafeUser, TrainerSalaryConfig, TrainerPayout } from "@shared/schema";
@@ -100,6 +101,8 @@ export default function SalaryPage() {
   const [selectedMonth, setSelectedMonth] = useState(String(new Date().getMonth() + 1));
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
   const [activeTab, setActiveTab] = useState("calculate");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletePayoutId, setDeletePayoutId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -260,6 +263,11 @@ export default function SalaryPage() {
     enabled: !!selectedTrainerId,
   });
 
+  // Check if payout already exists for selected month/year
+  const existingPayout = payouts.find(p => 
+    p.month === parseInt(selectedMonth) && p.year === parseInt(selectedYear)
+  );
+
   // Update payout status
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -277,6 +285,34 @@ export default function SalaryPage() {
 
   const handleUpdateStatus = (id: string, status: string) => {
     updateStatusMutation.mutate({ id, status });
+  };
+
+  // Delete payout
+  const deletePayoutMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/salary/payout/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/salary/payouts"] });
+      toast({ title: "Payout deleted successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleDeletePayout = (id: string) => {
+    setDeletePayoutId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeletePayout = () => {
+    if (deletePayoutId) {
+      deletePayoutMutation.mutate(deletePayoutId);
+    }
+    setDeleteDialogOpen(false);
+    setDeletePayoutId(null);
   };
 
   const selectedTrainer = trainers.find(t => t.id === selectedTrainerId);
@@ -819,6 +855,21 @@ export default function SalaryPage() {
                         </div>
                       </div>
 
+                      {/* Existing Payout Alert */}
+                      {existingPayout && (
+                        <div className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span className="font-medium text-sm">
+                              Payout already generated for {MONTHS[existingPayout.month - 1]} {existingPayout.year}
+                            </span>
+                          </div>
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                            To regenerate, please delete the existing payout first from the Payout History tab.
+                          </p>
+                        </div>
+                      )}
+
                       <div className="mt-6 flex gap-3">
                         <Button
                           onClick={handleGenerateAndPreview}
@@ -832,19 +883,30 @@ export default function SalaryPage() {
                           )}
                           Generate & Preview
                         </Button>
-                        <Button
-                          onClick={handleGeneratePayout}
-                          disabled={createPayoutMutation.isPending}
-                          variant="outline"
-                          className="gap-2"
-                        >
-                          {createPayoutMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <IndianRupee className="h-4 w-4" />
-                          )}
-                          Generate Payout
-                        </Button>
+                        {existingPayout ? (
+                          <Button
+                            variant="outline"
+                            disabled
+                            className="gap-2 opacity-50 cursor-not-allowed"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                            Already Generated
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={handleGeneratePayout}
+                            disabled={createPayoutMutation.isPending}
+                            variant="outline"
+                            className="gap-2"
+                          >
+                            {createPayoutMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <IndianRupee className="h-4 w-4" />
+                            )}
+                            Generate Payout
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -952,6 +1014,20 @@ export default function SalaryPage() {
                                     <CheckCircle className="h-3 w-3" /> Mark Paid
                                   </Button>
                                 )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
+                                  onClick={() => handleDeletePayout(payout.id)}
+                                  disabled={deletePayoutMutation.isPending}
+                                >
+                                  {deletePayoutMutation.isPending ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <X className="h-3 w-3" />
+                                  )}
+                                  Delete
+                                </Button>
                               </div>
                             </td>
                           </tr>
@@ -1034,6 +1110,31 @@ export default function SalaryPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Payout</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this payout? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDeletePayout}
+                disabled={deletePayoutMutation.isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deletePayoutMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );

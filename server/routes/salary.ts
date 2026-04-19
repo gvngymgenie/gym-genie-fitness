@@ -310,6 +310,30 @@ export function registerSalaryRoutes(app: Express) {
     }
   });
 
+  // Delete payout
+  app.delete("/api/salary/payout/:id", async (req, res) => {
+    try {
+      const payout = await storage.getPayout(req.params.id);
+      if (!payout) {
+        return res.status(404).json({ error: "Payout not found" });
+      }
+
+      // Delete line items first
+      await storage.deletePayoutLineItems(req.params.id);
+
+      // Delete the payout
+      const deleted = await storage.deletePayout(req.params.id);
+      if (!deleted) {
+        return res.status(500).json({ error: "Failed to delete payout" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete payout:", error);
+      res.status(500).json({ error: "Failed to delete payout" });
+    }
+  });
+
   // Upload a payslip PDF to Supabase Storage (no payoutId needed — used for preview)
   const payslipUploadSchema = z.object({
     trainerId: z.string(),
