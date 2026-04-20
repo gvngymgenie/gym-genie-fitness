@@ -155,7 +155,7 @@ const Merchandise = () => {
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-2">
-        <h1 className="text-4xl font-bold font-heading text-foreground">
+        <h1 className="text-2xl font-bold font-heading text-foreground">
           MERCHANDISE MANAGEMENT
         </h1>
         <p className="text-muted-foreground">

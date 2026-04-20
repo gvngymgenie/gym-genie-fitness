@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Shield, Users, UserCog, Dumbbell, ClipboardList, LayoutDashboard, UserPlus, CalendarCheck, FileText, Bell, Settings, Save, Loader2, List, Banknote, CreditCard } from "lucide-react";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import type { Role } from "@shared/schema";
@@ -48,8 +48,15 @@ const Roles: React.FC = () => {
     const { toast } = useToast();
     const { enabledModules } = useAuth();
 
-    // Filter pages based on enabled modules
-    const availablePages = allPages.filter(page => enabledModules.includes(page.id));
+     // Filter pages based on enabled modules
+     const availablePages = allPages.filter(page => enabledModules.includes(page.id));
+
+     // Count only permissions that are for enabled pages
+     const effectivePermissionCount = useMemo(() => {
+       return permissions[selectedRole].filter(p => 
+         availablePages.some(ap => ap.id === p)
+       ).length;
+     }, [permissions, selectedRole, availablePages]);
 
     // Fetch permissions from API
     const fetchPermissions = useCallback(async () => {
@@ -203,7 +210,7 @@ const Roles: React.FC = () => {
                                     </div>
                                 </div>
                                 <Badge className={`${roleInfo.color} border font-bold uppercase text-xs tracking-wider`}>
-                                    {permissions[selectedRole].length} / {availablePages.length} pages
+                                    {effectivePermissionCount} / {availablePages.length} pages
                                 </Badge>
                             </div>
                         </CardHeader>

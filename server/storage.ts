@@ -117,11 +117,12 @@ export interface IStorage {
   // Assignments by Member
   getWorkoutAssignmentsByMember(memberId: string): Promise<WorkoutProgramAssignment[]>;
   getDietAssignmentsByMember(memberId: string): Promise<DietPlanAssignment[]>;
-  // Trainer Profiles
-  getTrainerProfile(trainerId: string): Promise<TrainerProfile | undefined>;
-  createTrainerProfile(profile: InsertTrainerProfile): Promise<TrainerProfile>;
-  updateTrainerProfile(trainerId: string, profile: UpdateTrainerProfile): Promise<TrainerProfile | undefined>;
-  // Trainer Bookings
+   // Trainer Profiles
+   getTrainerProfile(trainerId: string): Promise<TrainerProfile | undefined>;
+   createTrainerProfile(profile: InsertTrainerProfile): Promise<TrainerProfile>;
+   updateTrainerProfile(trainerId: string, profile: UpdateTrainerProfile): Promise<TrainerProfile | undefined>;
+   getAllTrainers(): Promise<SafeUser[]>;
+   // Trainer Bookings
   getTrainerBookings(trainerId: string): Promise<TrainerBooking[]>;
   createTrainerBooking(booking: InsertTrainerBooking): Promise<TrainerBooking>;
   updateTrainerBooking(id: string, booking: UpdateTrainerBooking): Promise<TrainerBooking | undefined>;
@@ -1027,16 +1028,21 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateTrainerProfile(trainerId: string, updateData: UpdateTrainerProfile): Promise<TrainerProfile | undefined> {
-    const [updated] = await drizzleDb
-      .update(schema.trainerProfiles)
-      .set({ ...updateData, updatedAt: new Date() })
-      .where(eq(schema.trainerProfiles.trainerId, trainerId))
-      .returning();
-    return updated || undefined;
-  }
+   async updateTrainerProfile(trainerId: string, updateData: UpdateTrainerProfile): Promise<TrainerProfile | undefined> {
+     const [updated] = await drizzleDb
+       .update(schema.trainerProfiles)
+       .set({ ...updateData, updatedAt: new Date() })
+       .where(eq(schema.trainerProfiles.trainerId, trainerId))
+       .returning();
+     return updated || undefined;
+   }
 
-  // Trainer Bookings
+   async getAllTrainers(): Promise<SafeUser[]> {
+     const users = await drizzleDb.select().from(schema.users).where(eq(schema.users.role, "trainer"));
+     return users.map(toSafeUser);
+   }
+
+   // Trainer Bookings
   async getTrainerBookings(trainerId: string): Promise<TrainerBooking[]> {
     return await drizzleDb.select().from(schema.trainerBookings).where(eq(schema.trainerBookings.trainerId, trainerId));
   }
@@ -1508,10 +1514,11 @@ export class DatabaseStorage implements IStorage {
       { moduleName: 'reports', moduleLabel: 'Reports', description: 'Reports and analytics' },
       { moduleName: 'notifications', moduleLabel: 'Notifications', description: 'Notification management' },
       { moduleName: 'options', moduleLabel: 'Options', description: 'System options and preferences' },
-      // Admin sub-modules
-      { moduleName: 'admin-plans', moduleLabel: 'Membership Plans', description: 'Manage membership plans' },
-      { moduleName: 'admin-staff', moduleLabel: 'Staff Management', description: 'Manage staff members' },
-      { moduleName: 'admin-roles', moduleLabel: 'Roles & Permissions', description: 'Manage roles and permissions' },
+   // Admin sub-modules
+   { moduleName: 'admin-plans', moduleLabel: 'Membership Plans', description: 'Manage membership plans' },
+   { moduleName: 'admin-staff', moduleLabel: 'Staff Management', description: 'Manage staff members' },
+   { moduleName: 'admin-bookings', moduleLabel: 'Bookings Management', description: 'Manage trainer session bookings' },
+   { moduleName: 'admin-roles', moduleLabel: 'Roles & Permissions', description: 'Manage roles and permissions' },
       { moduleName: 'admin-inventory', moduleLabel: 'Inventory', description: 'Manage inventory' },
       { moduleName: 'admin-merchandise', moduleLabel: 'Merchandise', description: 'Manage merchandise' },
       { moduleName: 'admin-revenue', moduleLabel: 'Revenue', description: 'Revenue reports' },

@@ -155,25 +155,25 @@ export function registerSalaryRoutes(app: Express) {
     }
   });
 
-  // Create a payout record
-  app.post("/api/salary/payout", async (req, res) => {
-    try {
-      const {
-        trainerId,
-        month,
-        year,
-        baseSalary,
-        attendanceDays,
-        attendanceBonus,
-        sessionCount,
-        sessionBonus,
-        reviewAvgRating,
-        reviewBonus,
-        grossPay,
-        deductions,
-        netPay,
-        notes,
-      } = req.body;
+   // Create a payout record
+   app.post("/api/salary/payout", async (req, res) => {
+     try {
+       const {
+         trainerId,
+         month,
+         year,
+         baseSalary,
+         attendanceDays,
+         attendanceBonus,
+         sessionCount,
+         sessionBonus,
+         reviewAvgRating,
+         reviewBonus,
+         grossPay,
+         deductions,
+         netPay,
+         notes,
+       } = req.body;
 
       // Check if payout already exists
       const existing = await storage.getPayoutByMonth(trainerId, month, year);
@@ -215,14 +215,14 @@ export function registerSalaryRoutes(app: Express) {
           amount: attendanceBonus,
         } as any);
       }
-      if (sessionBonus > 0) {
-        await storage.createPayoutLineItem({
-          payoutId: payout.id,
-          type: "session",
-          description: `${sessionCount} sessions completed`,
-          amount: sessionBonus,
-        } as any);
-      }
+       if (sessionBonus > 0) {
+         await storage.createPayoutLineItem({
+           payoutId: payout.id,
+           type: "session",
+           description: `${sessionCount} sessions completed`,
+           amount: sessionBonus,
+         } as any);
+       }
       if (reviewBonus > 0) {
         await storage.createPayoutLineItem({
           payoutId: payout.id,

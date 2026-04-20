@@ -182,13 +182,71 @@ export function registerTrainerRoutes(app: Express) {
     }
   });
 
-  // Member Bookings Route
-  app.get("/api/member/:memberId/bookings", async (req, res) => {
-    try {
-      const bookings = await storage.getMemberBookings(req.params.memberId);
-      res.json(bookings);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch member bookings" });
-    }
-  });
-}
+   // Member Bookings Route
+   app.get("/api/member/:memberId/bookings", async (req, res) => {
+     try {
+       const bookings = await storage.getMemberBookings(req.params.memberId);
+       res.json(bookings);
+     } catch (error) {
+       res.status(500).json({ error: "Failed to fetch member bookings" });
+     }
+   });
+
+   // Mark a booking as completed
+   app.post("/api/trainers/:trainerId/bookings/:bookingId/complete", async (req, res) => {
+     try {
+       const booking = await storage.updateTrainerBooking(req.params.bookingId, {
+         status: "completed",
+       } as any);
+       if (!booking) {
+         return res.status(404).json({ error: "Booking not found" });
+       }
+       res.json(booking);
+     } catch (error) {
+       console.error("Failed to complete booking:", error);
+       res.status(500).json({ error: "Failed to complete booking" });
+     }
+   });
+
+   // Revert a booking to scheduled (undo completion)
+   app.post("/api/trainers/:trainerId/bookings/:bookingId/revert", async (req, res) => {
+     try {
+       const booking = await storage.updateTrainerBooking(req.params.bookingId, {
+         status: "scheduled",
+       } as any);
+       if (!booking) {
+         return res.status(404).json({ error: "Booking not found" });
+       }
+       res.json(booking);
+     } catch (error) {
+       console.error("Failed to revert booking:", error);
+       res.status(500).json({ error: "Failed to revert booking" });
+     }
+   });
+
+   // Auto-complete past bookings for a trainer (bookings with date <= today)
+   app.post("/api/trainers/:trainerId/auto-complete", async (req, res) => {
+     try {
+       const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+       const allBookings = await storage.getTrainerBookings(req.params.trainerId);
+       const pastBookings = allBookings.filter(
+         (b) => b.bookingDate <= today && b.status !== "completed"
+       );
+       
+       const updated = await Promise.all(
+         pastBookings.map((b) =>
+           storage.updateTrainerBooking(b.id, { status: "completed" } as any)
+         )
+       );
+       
+       res.json({
+         success: true,
+         completedCount: updated.length,
+         completedIds: updated.map((b) => b.id),
+       });
+     } catch (error) {
+       console.error("Failed to auto-complete bookings:", error);
+       res.status(500).json({ error: "Failed to auto-complete bookings" });
+     }
+   });
+ }

@@ -11,29 +11,30 @@ import { useSuperadminTerminal } from "@/hooks/useSuperadminTerminal";
 import { ModuleControlTerminal } from "@/components/admin/ModuleControlTerminal";
 import NotFound from "@/pages/not-found";
 
-// Admin Pages
-import Dashboard from "@/pages/Dashboard";
-import Home from "@/pages/Home";
-import Leads from "@/pages/Leads";
-import Members from "@/pages/Members";
-import Attendance from "@/pages/Attendance";
-import Salary from "@/pages/Salary";
-import AdminPlans from "@/pages/Admin/AdminPlans";
-import AdminStaff from "@/pages/Admin/AdminStaff";
-import AdminRoles from "@/pages/Admin/AdminRoles";
-import AdminInventory from "@/pages/Admin/AdminInventory";
-import AdminMerchandise from "@/pages/Admin/AdminMerchandise";
-import AdminRevenue from "@/pages/Admin/AdminRevenue";
-import AdminAccount from "@/pages/Admin/AdminAccount";
-import AdminOptions from "@/pages/Admin/AdminOptions";
-import AdminUploads from "@/pages/Admin/AdminUploads";
-// import AdminAIUsage from "@/pages/Admin/AIUsage";
-import Reports from "@/pages/Reports";
-import Workouts from "@/pages/Workouts";
-import Trainers from "@/pages/Trainers";
-import Notifications from "@/pages/Notifications";
-import MemberProfile from "@/pages/MemberProfile";
-import Payments from "@/pages/Payments";
+ // Admin Pages
+ import Dashboard from "@/pages/Dashboard";
+ import Home from "@/pages/Home";
+ import Leads from "@/pages/Leads";
+ import Members from "@/pages/Members";
+ import Attendance from "@/pages/Attendance";
+ import Salary from "@/pages/Salary";
+ import AdminPlans from "@/pages/Admin/AdminPlans";
+ import AdminStaff from "@/pages/Admin/AdminStaff";
+ import AdminBookings from "@/pages/Admin/Bookings";
+ import AdminRoles from "@/pages/Admin/AdminRoles";
+ import AdminInventory from "@/pages/Admin/AdminInventory";
+ import AdminMerchandise from "@/pages/Admin/AdminMerchandise";
+ import AdminRevenue from "@/pages/Admin/AdminRevenue";
+ import AdminAccount from "@/pages/Admin/AdminAccount";
+ import AdminOptions from "@/pages/Admin/AdminOptions";
+ import AdminUploads from "@/pages/Admin/AdminUploads";
+ // import AdminAIUsage from "@/pages/Admin/AIUsage";
+ import Reports from "@/pages/Reports";
+ import Workouts from "@/pages/Workouts";
+ import Trainers from "@/pages/Trainers";
+ import Notifications from "@/pages/Notifications";
+ import MemberProfile from "@/pages/MemberProfile";
+ import Payments from "@/pages/Payments";
 
 // Member Pages
 import MemberDashboard from "@/pages/member/Dashboard";
@@ -64,12 +65,13 @@ function Router() {
       <Route path="/attendance" component={Attendance} />
       <Route path="/salary" component={Salary} />
       <Route path="/payments" component={Payments} />
-      <Route path="/admin">
-        <Redirect to="/admin/plans" />
-      </Route>
-      <Route path="/admin/plans" component={AdminPlans} />
-      <Route path="/admin/staff" component={AdminStaff} />
-      <Route path="/admin/roles" component={AdminRoles} />
+       <Route path="/admin">
+         <Redirect to="/admin/plans" />
+       </Route>
+       <Route path="/admin/plans" component={AdminPlans} />
+       <Route path="/admin/staff" component={AdminStaff} />
+       <Route path="/admin/bookings" component={AdminBookings} />
+       <Route path="/admin/roles" component={AdminRoles} />
       <Route path="/admin/inventory" component={AdminInventory} />
       <Route path="/admin/merchandise" component={AdminMerchandise} />
       <Route path="/admin/revenue" component={AdminRevenue} />

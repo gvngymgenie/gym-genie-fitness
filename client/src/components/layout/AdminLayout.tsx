@@ -1,8 +1,8 @@
 import { Layout } from "./Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Link, useRoute } from "wouter";
-import { ReactNode, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+ import { Link, useLocation } from "wouter";
+ import { ReactNode, useMemo } from "react";
+ import { useQuery } from "@tanstack/react-query";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -12,6 +12,7 @@ interface AdminLayoutProps {
 const adminTabs = [
   { value: "plans", label: "Membership Plans", href: "/admin/plans", modulePermission: "admin-plans", testId: undefined },
   { value: "staff", label: "Staff Management", href: "/admin/staff", modulePermission: "admin-staff", testId: undefined },
+  { value: "bookings", label: "Bookings", href: "/admin/bookings", modulePermission: "admin-bookings", testId: undefined },
   { value: "roles", label: "Roles & Permissions", href: "/admin/roles", modulePermission: "admin-roles", testId: "tab-roles" },
   { value: "inventory", label: "Inventory", href: "/admin/inventory", modulePermission: "admin-inventory", testId: undefined },
   { value: "merchandise", label: "Merchandise", href: "/admin/merchandise", modulePermission: "admin-merchandise", testId: undefined },
@@ -43,11 +44,19 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     return adminTabs.filter(tab => enabledModules.has(tab.modulePermission));
   }, [enabledModules]);
 
+  // Get current location
+  const [location] = useLocation();
+
   // Determine active tab based on current route
-  const activeTab = visibleTabs.find((tab) => {
-    const [matches] = useRoute(tab.href);
-    return matches;
-  })?.value || visibleTabs[0]?.value || "plans";
+  const activeTab = useMemo(() => {
+    if (!visibleTabs.length) return "plans";
+    // Find exact match first, then prefix match for nested routes
+    const exactMatch = visibleTabs.find(tab => location === tab.href);
+    if (exactMatch) return exactMatch.value;
+    // Fallback: prefix match (e.g., /admin/plans/anything -> plans)
+    const prefixMatch = visibleTabs.find(tab => location.startsWith(tab.href + "/"));
+    return prefixMatch?.value || visibleTabs[0]?.value;
+  }, [visibleTabs, location]);
 
   return (
     <Layout>

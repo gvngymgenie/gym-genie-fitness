@@ -61,15 +61,16 @@ const allSidebarItems = [
   { icon: Bell, label: "Notifications", href: "/notifications", permission: "notifications" as const, roles: ["admin", "manager", "trainer", "staff"] as Role[] },
   { icon: List, label: "Options", href: "/admin/options", permission: "options" as const, roles: ["admin"] as Role[] },
   // Admin sub-pages
-  { icon: CreditCardIcon, label: "Membership Plans", href: "/admin/plans", permission: "admin-plans" as const, roles: ["admin"] as Role[], parent: "admin" as const },
-  { icon: UserCheck, label: "Staff Management", href: "/admin/staff", permission: "admin-staff" as const, roles: ["admin"] as Role[], parent: "admin" as const },
-  { icon: Shield, label: "Roles & Permissions", href: "/admin/roles", permission: "admin-roles" as const, roles: ["admin"] as Role[], parent: "admin" as const },
-  { icon: Package, label: "Inventory", href: "/admin/inventory", permission: "admin-inventory" as const, roles: ["admin"] as Role[], parent: "admin" as const },
-  { icon: ShoppingBag, label: "Merchandise", href: "/admin/merchandise", permission: "admin-merchandise" as const, roles: ["admin"] as Role[], parent: "admin" as const },
-  { icon: TrendingUp, label: "Revenue", href: "/admin/revenue", permission: "admin-revenue" as const, roles: ["admin"] as Role[], parent: "admin" as const },
-  { icon: Brain, label: "AI Usage", href: "/admin/ai-usage", permission: "admin-ai-usage" as const, roles: ["admin"] as Role[], parent: "admin" as const },
-  { icon: UserCircle, label: "Account Settings", href: "/admin/account", permission: "admin-account" as const, roles: ["admin"] as Role[], parent: "admin" as const },
-  { icon: Upload, label: "Uploads", href: "/admin/uploads", permission: "admin-uploads" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+   { icon: CreditCardIcon, label: "Membership Plans", href: "/admin/plans", permission: "admin-plans" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+   { icon: UserCheck, label: "Staff Management", href: "/admin/staff", permission: "admin-staff" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+   { icon: CalendarCheck, label: "Bookings", href: "/admin/bookings", permission: "admin-bookings" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+   { icon: Shield, label: "Roles & Permissions", href: "/admin/roles", permission: "admin-roles" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+   { icon: Package, label: "Inventory", href: "/admin/inventory", permission: "admin-inventory" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+   { icon: ShoppingBag, label: "Merchandise", href: "/admin/merchandise", permission: "admin-merchandise" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+   { icon: TrendingUp, label: "Revenue", href: "/admin/revenue", permission: "admin-revenue" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+   { icon: Brain, label: "AI Usage", href: "/admin/ai-usage", permission: "admin-ai-usage" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+   { icon: UserCircle, label: "Account Settings", href: "/admin/account", permission: "admin-account" as const, roles: ["admin"] as Role[], parent: "admin" as const },
+   { icon: Upload, label: "Uploads", href: "/admin/uploads", permission: "admin-uploads" as const, roles: ["admin"] as Role[], parent: "admin" as const },
 ];
 
 const getRoleBadgeColor = (role: string) => {

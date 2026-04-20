@@ -168,20 +168,23 @@ export default function SalaryPage() {
     }
   }, [salaryConfig]);
 
-  const saveConfigMutation = useMutation({
-    mutationFn: async (data: typeof configForm) => {
-      const res = await apiRequest("POST", `/api/salary/config/${selectedTrainerId}`, data);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/salary/config"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/salary/calculate"] });
-      toast({ title: "Salary config saved" });
-    },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
+   const saveConfigMutation = useMutation({
+     mutationKey: ['saveConfig', selectedTrainerId],
+     mutationFn: async (data: typeof configForm) => {
+       const res = await apiRequest("POST", `/api/salary/config/${selectedTrainerId}`, data);
+       return res.json();
+     },
+     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ["/api/salary/config", selectedTrainerId] });
+       if (selectedMonth && selectedYear) {
+         queryClient.invalidateQueries({ queryKey: ["/api/salary/calculate", selectedTrainerId, selectedMonth, selectedYear] });
+       }
+       toast({ title: "Salary config saved" });
+     },
+     onError: (error: any) => {
+       toast({ title: "Error", description: error.message, variant: "destructive" });
+     },
+   });
 
   const handleSaveConfig = () => {
     saveConfigMutation.mutate(configForm);
@@ -190,14 +193,16 @@ export default function SalaryPage() {
   // Refresh data when tab changes - use refetch to ensure fresh data
   const [lastRefreshTab, setLastRefreshTab] = useState("");
   
-  useEffect(() => {
-    if (selectedTrainerId && activeTab && activeTab !== lastRefreshTab) {
-      queryClient.invalidateQueries({ queryKey: ["/api/salary/config"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/salary/calculate"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/salary/payouts"] });
-      setLastRefreshTab(activeTab);
-    }
-  }, [activeTab, selectedTrainerId, queryClient, lastRefreshTab]);
+   useEffect(() => {
+     if (selectedTrainerId && activeTab && activeTab !== lastRefreshTab) {
+       queryClient.invalidateQueries({ queryKey: ["/api/salary/config", selectedTrainerId] });
+       if (selectedMonth && selectedYear) {
+         queryClient.invalidateQueries({ queryKey: ["/api/salary/calculate", selectedTrainerId, selectedMonth, selectedYear] });
+       }
+       queryClient.invalidateQueries({ queryKey: ["/api/salary/payouts"] });
+       setLastRefreshTab(activeTab);
+     }
+   }, [activeTab, selectedTrainerId, selectedMonth, selectedYear, queryClient, lastRefreshTab]);
 
   // Calculate payout preview
   const { data: payoutPreview, isLoading: isLoadingPreview } = useQuery<any>({
@@ -307,15 +312,48 @@ export default function SalaryPage() {
     setDeleteDialogOpen(true);
   };
 
-  const confirmDeletePayout = () => {
-    if (deletePayoutId) {
-      deletePayoutMutation.mutate(deletePayoutId);
-    }
-    setDeleteDialogOpen(false);
-    setDeletePayoutId(null);
-  };
+   const confirmDeletePayout = () => {
+     if (deletePayoutId) {
+       deletePayoutMutation.mutate(deletePayoutId);
+     }
+     setDeleteDialogOpen(false);
+     setDeletePayoutId(null);
+   };
 
-  const selectedTrainer = trainers.find(t => t.id === selectedTrainerId);
+   // Auto-complete past bookings for selected trainer
+   const autoCompleteMutation = useMutation({
+     mutationKey: ['autoComplete', selectedTrainerId, selectedMonth, selectedYear],
+     mutationFn: async (trainerId: string) => {
+       const res = await apiRequest("POST", `/api/trainers/${trainerId}/auto-complete`);
+       return res.json();
+     },
+     onSuccess: (data) => {
+       toast({ 
+         title: "Success", 
+         description: `Marked ${data.completedCount} booking(s) as completed` 
+       });
+       // Invalidate relevant queries
+       if (selectedTrainerId && selectedMonth && selectedYear) {
+         queryClient.invalidateQueries({ queryKey: ["/api/salary/calculate", selectedTrainerId, selectedMonth, selectedYear] });
+       }
+       if (selectedTrainerId) {
+         queryClient.invalidateQueries({ queryKey: ["/api/trainers", selectedTrainerId, "bookings"] });
+       }
+     },
+     onError: (error: any) => {
+       toast({ title: "Error", description: error.message, variant: "destructive" });
+     },
+   });
+
+   const handleAutoComplete = () => {
+     if (!selectedTrainerId) {
+       toast({ title: "No trainer selected", variant: "destructive" });
+       return;
+     }
+     autoCompleteMutation.mutate(selectedTrainerId);
+   };
+
+   const selectedTrainer = trainers.find(t => t.id === selectedTrainerId);
 
   // PDF generation & Supabase link management
   const [whatsappPhone, setWhatsappPhone] = useState("");
@@ -695,7 +733,7 @@ export default function SalaryPage() {
                           onChange={(e) => setConfigForm(prev => ({ ...prev, perSessionRate: Math.round(parseFloat(e.target.value || "0") * 100) }))}
                           placeholder="e.g., 500"
                         />
-                        <p className="text-xs text-muted-foreground">Earned for each completed coaching session</p>
+                         <p className="text-xs text-muted-foreground">Earned for each completed coaching session</p>
                       </div>
                       <div className="space-y-2">
                         <Label>Attendance Bonus Per Day (₹)</Label>
@@ -756,9 +794,27 @@ export default function SalaryPage() {
               </Card>
             </TabsContent>
 
-            {/* Calculate & Preview Tab */}
-            <TabsContent value="calculate" className="space-y-6 mt-6">
-              {isLoadingPreview ? (
+             {/* Calculate & Preview Tab */}
+             <TabsContent value="calculate" className="space-y-6 mt-6">
+               {/* {selectedTrainerId && !USE_MOCK_DATA && (
+                 <div className="flex justify-end">
+                   <Button
+                     variant="outline"
+                     size="sm"
+                     onClick={handleAutoComplete}
+                     disabled={autoCompleteMutation.isPending}
+                     className="gap-2"
+                   >
+                     {autoCompleteMutation.isPending ? (
+                       <Loader2 className="h-4 w-4 animate-spin" />
+                     ) : (
+                       <CheckCircle className="h-4 w-4" />
+                     )}
+                     Mark Past Sessions Complete
+                   </Button>
+                 </div>
+               )} */}
+               {isLoadingPreview ? (
                 <Card className="bg-card/50 backdrop-blur-sm">
                   <CardContent className="pt-8">
                     <div className="flex items-center justify-center py-8">
@@ -838,7 +894,7 @@ export default function SalaryPage() {
                           <span className="font-medium text-green-400">+{effectivePreview.formatted.attendanceBonus}</span>
                         </div>
                         <div className="flex justify-between items-center py-2 border-b border-border">
-                          <span className="text-muted-foreground">Session Bonus ({effectivePreview.breakdown.sessionCount} sessions)</span>
+                           <span className="text-muted-foreground">Session Bonus ({effectivePreview.breakdown.sessionCount} sessions)</span>
                           <span className="font-medium text-green-400">+{effectivePreview.formatted.sessionBonus}</span>
                         </div>
                         <div className="flex justify-between items-center py-2 border-b border-border">

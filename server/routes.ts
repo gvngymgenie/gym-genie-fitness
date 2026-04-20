@@ -26,10 +26,11 @@ import { registerOptionsRoutes } from "./routes/options";
 import { registerUploadsRoutes } from "./routes/uploads";
 import { registerAIRoutes } from "./routes/ai";
 import { registerMemberCreditsRoutes } from "./routes/memberCredits";
-import { registerSalaryRoutes } from "./routes/salary";
-import { registerAiUsageRoutes } from "./routes/aiUsage";
-import { registerWhatsAppRoutes } from "./routes/whatsapp";
-import { registerModuleControlRoutes } from "./routes/module-control";
+ import { registerSalaryRoutes } from "./routes/salary";
+ import { registerAiUsageRoutes } from "./routes/aiUsage";
+ import { registerWhatsAppRoutes } from "./routes/whatsapp";
+ import { registerModuleControlRoutes } from "./routes/module-control";
+ import { registerBookingsRoutes } from "./routes/bookings";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -66,10 +67,11 @@ export async function registerRoutes(
   registerUploadsRoutes(app);
   registerAIRoutes(app);
   registerMemberCreditsRoutes(app);
-  registerSalaryRoutes(app);
-  registerAiUsageRoutes(app);
-  registerWhatsAppRoutes(app);
-  registerModuleControlRoutes(app);
+   registerSalaryRoutes(app);
+   registerAiUsageRoutes(app);
+   registerWhatsAppRoutes(app);
+   registerModuleControlRoutes(app);
+   registerBookingsRoutes(app);
 
   return httpServer;
 }
