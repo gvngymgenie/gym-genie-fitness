@@ -38,7 +38,7 @@ export default function MemberTrainers() {
   const [selectedTrainer, setSelectedTrainer] = useState<SafeUser | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
-  const [selectedSlot, setSelectedSlot] = useState<{ date: string; period: string; slotNumber: number } | null>(null);
+  const [selectedSlots, setSelectedSlots] = useState<{ date: string; period: string; slotNumber: number }[]>([]);
 
   const baseDate = new Date();
   baseDate.setDate(baseDate.getDate() + weekOffset * 7);
@@ -120,8 +120,8 @@ export default function MemberTrainers() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/member", member?.id, "bookings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trainers", selectedTrainer?.id, "availability"] });
-      toast({ title: "Session booked successfully!" });
-      setSelectedSlot(null);
+      toast({ title: "Session(s) booked successfully!" });
+      setSelectedSlots([]);
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -131,33 +131,37 @@ export default function MemberTrainers() {
   const handleOpenDrawer = (trainer: SafeUser) => {
     setSelectedTrainer(trainer);
     setWeekOffset(0);
-    setSelectedSlot(null);
+    setSelectedSlots([]);
     setDrawerOpen(true);
   };
 
   const handleSelectSlot = (date: string, period: string, slotNumber: number) => {
-    if (selectedSlot && selectedSlot.date === date && selectedSlot.period === period && selectedSlot.slotNumber === slotNumber) {
-      setSelectedSlot(null);
-    } else {
-      setSelectedSlot({ date, period, slotNumber });
-    }
+    setSelectedSlots(prev => {
+      const existingIndex = prev.findIndex(s => s.date === date && s.period === period && s.slotNumber === slotNumber);
+      if (existingIndex >= 0) {
+        return prev.filter((_, i) => i !== existingIndex);
+      }
+      const existingForDate = prev.find(s => s.date === date);
+      if (existingForDate) {
+        return prev.map(s => s.date === date ? { date, period, slotNumber } : s);
+      }
+      return [...prev, { date, period, slotNumber }];
+    });
   };
 
   const handleConfirmBooking = () => {
-    if (!selectedTrainer || !selectedSlot) return;
-    bookSlotMutation.mutate({
-      trainerId: selectedTrainer.id,
-      bookingDate: selectedSlot.date,
-      period: selectedSlot.period,
-      slotNumber: selectedSlot.slotNumber,
+    if (!selectedTrainer || selectedSlots.length === 0) return;
+    selectedSlots.forEach(slot => {
+      bookSlotMutation.mutate({
+        trainerId: selectedTrainer.id,
+        bookingDate: slot.date,
+        period: slot.period,
+        slotNumber: slot.slotNumber,
+      });
     });
   };
 
   const isSlotDisabled = (date: string, period: string, slotNumber: number): boolean => {
-    if (!selectedSlot) return false;
-    if (selectedSlot.date === date && selectedSlot.period === period && selectedSlot.slotNumber !== slotNumber) {
-      return true;
-    }
     return false;
   };
 
@@ -389,7 +393,7 @@ export default function MemberTrainers() {
                                   ))}
                                   {Array.from({ length: openSlots }).map((_, idx) => {
                                     const slotNum = nextSlotNumber + idx;
-                                    const isSelected = selectedSlot?.date === date && selectedSlot?.period === period && selectedSlot?.slotNumber === slotNum;
+                                    const isSelected = selectedSlots.some(s => s.date === date && s.period === period && s.slotNumber === slotNum);
                                     const disabled = isSlotDisabled(date, period, slotNum);
                                     return (
                                       <Tooltip key={`open-${idx}`}>
@@ -407,7 +411,7 @@ export default function MemberTrainers() {
                                           />
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                          <p>{isSelected ? 'Click to unselect' : disabled ? 'Disabled' : 'Click to select'}</p>
+                                          <p>{isSelected ? 'Click to unselect' : 'Click to select'}</p>
                                         </TooltipContent>
                                       </Tooltip>
                                     );
@@ -442,7 +446,7 @@ export default function MemberTrainers() {
               </div>
             </div>
 
-            {selectedSlot && (
+            {selectedSlots.length > 0 && (
               <div className="pt-4">
                 <Button 
                   className="w-full" 
@@ -451,7 +455,7 @@ export default function MemberTrainers() {
                   data-testid="button-confirm-booking"
                 >
                   {bookSlotMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Confirm Booking - {formatDateShort(selectedSlot.date)} ({selectedSlot.period})
+                  Confirm Booking{selectedSlots.length > 1 ? "s" : ""} - {selectedSlots.map(s => formatDateShort(s.date)).join(", ")}
                 </Button>
               </div>
             )}
