@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { db as drizzleDb } from "./db";
-import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import { eq, and, desc, inArray, sql, isNull } from "drizzle-orm";
 import type { User, SafeUser, InsertUser, UpdateUser, MembershipPlan, InsertPlan, UpdatePlan, InventoryItem, InsertInventory, UpdateInventory, Lead, InsertLead, UpdateLead, Member, InsertMember, UpdateMember, CompanySettings, InsertCompanySettings, UpdateCompanySettings, Branch, InsertBranch, UpdateBranch, Attendance, InsertAttendance, StaffAttendance, InsertStaffAttendance, TrainerSalaryConfig, InsertTrainerSalaryConfig, UpdateTrainerSalaryConfig, TrainerPayout, InsertTrainerPayout, UpdateTrainerPayout, TrainerPayoutLineItem, InsertTrainerPayoutLineItem, WorkoutProgram, InsertWorkoutProgram, UpdateWorkoutProgram, DietPlan, InsertDietPlan, UpdateDietPlan, WorkoutProgramAssignment, InsertWorkoutProgramAssignment, DietPlanAssignment, InsertDietPlanAssignment, TrainerProfile, InsertTrainerProfile, UpdateTrainerProfile, TrainerAvailability, InsertTrainerAvailability, TrainerBooking, InsertTrainerBooking, UpdateTrainerBooking, TrainerFeedback, InsertTrainerFeedback, MemberOtp, InsertMemberOtp, BmiRecord, InsertBmiRecord, MemberMeasurement, InsertMemberMeasurement, UpdateMemberMeasurement, Notification, InsertNotification, UpdateNotification, PushSubscription, InsertPushSubscription, RolePermission, ModuleControl, InsertModuleControl, UpdateModuleControl } from "@shared/schema";
 import * as schema from "../shared/schema";
 import { transformMemberToCamelCase } from "./db";
@@ -707,6 +707,27 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
+  async updateAttendanceCheckOut(id: string, checkOutTime: string): Promise<Attendance | undefined> {
+    const [updated] = await drizzleDb
+      .update(schema.attendance)
+      .set({ checkOutTime })
+      .where(eq(schema.attendance.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getOpenAttendance(memberId: string, date: string): Promise<Attendance | undefined> {
+    const [record] = await drizzleDb
+      .select()
+      .from(schema.attendance)
+      .where(and(
+        eq(schema.attendance.memberId, memberId),
+        eq(schema.attendance.date, date),
+        isNull(schema.attendance.checkOutTime)
+      ));
+    return record;
+  }
+
   // Staff Attendance
   async getStaffAttendanceByDate(date: string): Promise<StaffAttendance[]> {
     return await drizzleDb.select().from(schema.staffAttendance).where(eq(schema.staffAttendance.date, date)).orderBy(schema.staffAttendance.checkInTime);
@@ -724,6 +745,27 @@ export class DatabaseStorage implements IStorage {
   async deleteStaffAttendance(id: string): Promise<boolean> {
     const result = await drizzleDb.delete(schema.staffAttendance).where(eq(schema.staffAttendance.id, id)).returning();
     return result.length > 0;
+  }
+
+  async updateStaffAttendanceCheckOut(id: string, checkOutTime: string): Promise<StaffAttendance | undefined> {
+    const [updated] = await drizzleDb
+      .update(schema.staffAttendance)
+      .set({ checkOutTime })
+      .where(eq(schema.staffAttendance.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getOpenStaffAttendance(personId: string, date: string): Promise<StaffAttendance | undefined> {
+    const [record] = await drizzleDb
+      .select()
+      .from(schema.staffAttendance)
+      .where(and(
+        eq(schema.staffAttendance.personId, personId),
+        eq(schema.staffAttendance.date, date),
+        isNull(schema.staffAttendance.checkOutTime)
+      ));
+    return record;
   }
 
   // Trainer Salary

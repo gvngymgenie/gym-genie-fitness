@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarCheck, Fingerprint, Smartphone, UserCheck, Clock, CalendarIcon, Loader2, Trash2, UserPlus } from "lucide-react";
+import { CalendarCheck, Fingerprint, Smartphone, UserCheck, Clock, CalendarIcon, Loader2, Trash2, UserPlus, LogOut } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +31,9 @@ export default function AttendancePage() {
   // Member attendance state
   const [selectedMemberId, setSelectedMemberId] = useState("");
   const [checkInTime, setCheckInTime] = useState(format(new Date(), "HH:mm"));
+  const [memberCheckOutModalOpen, setMemberCheckOutModalOpen] = useState(false);
+  const [selectedMemberRecordForCheckOut, setSelectedMemberRecordForCheckOut] = useState<Attendance | null>(null);
+  const [memberCheckOutTimeInput, setMemberCheckOutTimeInput] = useState(format(new Date(), "HH:mm"));
 
   // Staff attendance state
   const [selectedStaffType, setSelectedStaffType] = useState<StaffTypeFilter>("all");
@@ -37,6 +41,10 @@ export default function AttendancePage() {
   const [staffCheckInTime, setStaffCheckInTime] = useState(format(new Date(), "HH:mm"));
   const [staffCheckOutTime, setStaffCheckOutTime] = useState("");
   const [staffNotes, setStaffNotes] = useState("");
+  const [checkOutModalOpen, setCheckOutModalOpen] = useState(false);
+  const [selectedRecordForCheckOut, setSelectedRecordForCheckOut] = useState<StaffAttendance | null>(null);
+  const [checkOutTimeInput, setCheckOutTimeInput] = useState(format(new Date(), "HH:mm"));
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const dateStr = format(selectedDate, "yyyy-MM-dd");
   const todayStr = format(new Date(), "yyyy-MM-dd");
@@ -94,6 +102,19 @@ export default function AttendancePage() {
     },
   });
 
+  // Check for open (unchecked-out) entry query
+  const checkOpenEntryQuery = async (personId: string, date: string) => {
+    const res = await fetch(`/api/staff-attendance/open?personId=${personId}&date=${date}`);
+    if (!res.ok) return null;
+    return res.json();
+  };
+
+  const checkOpenMemberEntryQuery = async (memberId: string, date: string) => {
+    const res = await fetch(`/api/attendance/open?memberId=${memberId}&date=${date}`);
+    if (!res.ok) return null;
+    return res.json();
+  };
+
   const activeMembers = useMemo(() => {
     return members.filter(m => m.status === "Active");
   }, [members]);
@@ -107,6 +128,32 @@ export default function AttendancePage() {
     if (selectedStaffType === "all") return staffAttendanceRecords;
     return staffAttendanceRecords.filter(r => r.personType === selectedStaffType);
   }, [staffAttendanceRecords, selectedStaffType]);
+
+  const calculateHours = (checkIn: string, checkOut: string): string => {
+    if (!checkIn || !checkOut) return "--";
+    const [inH, inM] = checkIn.split(":").map(Number);
+    const [outH, outM] = checkOut.split(":").map(Number);
+    const totalMinutes = (outH * 60 + outM) - (inH * 60 + inM);
+    if (totalMinutes <= 0) return "--";
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
+    if (hours > 0) return `${hours}h`;
+    return `${mins}m`;
+  };
+
+  const trainerHoursMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    filteredStaffAttendance.forEach(record => {
+      if (record.checkInTime && record.checkOutTime) {
+        const hours = calculateHours(record.checkInTime, record.checkOutTime);
+        if (hours !== "--") {
+          map[record.personName] = hours;
+        }
+      }
+    });
+    return map;
+  }, [filteredStaffAttendance]);
 
   const todayCheckInsCount = todayAttendance.length;
   const todayStaffCheckInsCount = todayStaffAttendance.length;
@@ -182,7 +229,7 @@ export default function AttendancePage() {
     },
   });
 
-  const handleMarkPresent = () => {
+  const handleMarkPresent = async () => {
     if (!selectedMemberId) {
       toast({ title: "Please select a member", variant: "destructive" });
       return;
@@ -191,10 +238,50 @@ export default function AttendancePage() {
     const member = activeMembers.find(m => m.id === selectedMemberId);
     if (!member) return;
 
+    // Check for unchecked-out entry
+    const openEntry = await checkOpenMemberEntryQuery(member.id, dateStr);
+    if (openEntry) {
+      toast({ title: "Cannot check in - previous check-out not recorded", description: `Please check out from ${openEntry.checkInTime} first`, variant: "destructive" });
+      return;
+    }
+
     markPresentMutation.mutate({
       memberId: member.id,
       memberName: `${member.firstName} ${member.lastName || ""}`.trim(),
       checkInTime,
+    });
+  };
+
+  const memberCheckOutMutation = useMutation({
+    mutationFn: async (data: { id: string; checkOutTime: string }) => {
+      const res = await apiRequest("PATCH", `/api/attendance/${data.id}`, {
+        checkOutTime: data.checkOutTime,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      toast({ title: "Check-out recorded successfully" });
+      setMemberCheckOutModalOpen(false);
+      setSelectedMemberRecordForCheckOut(null);
+      setMemberCheckOutTimeInput(format(new Date(), "HH:mm"));
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleMemberOpenCheckOut = (record: Attendance) => {
+    setSelectedMemberRecordForCheckOut(record);
+    setMemberCheckOutTimeInput(format(new Date(), "HH:mm"));
+    setMemberCheckOutModalOpen(true);
+  };
+
+  const handleMemberCheckOut = () => {
+    if (!selectedMemberRecordForCheckOut) return;
+    memberCheckOutMutation.mutate({
+      id: selectedMemberRecordForCheckOut.id,
+      checkOutTime: memberCheckOutTimeInput,
     });
   };
 
@@ -221,7 +308,7 @@ export default function AttendancePage() {
     },
   });
 
-  const handleMarkStaffPresent = () => {
+  const handleMarkStaffPresent = async () => {
     if (!selectedStaffId) {
       toast({ title: "Please select a staff member", variant: "destructive" });
       return;
@@ -230,6 +317,13 @@ export default function AttendancePage() {
     const staff = filteredStaffUsers.find(u => u.id === selectedStaffId);
     if (!staff) return;
 
+    // Check for unchecked-out entry
+    const openEntry = await checkOpenEntryQuery(staff.id, dateStr);
+    if (openEntry) {
+      toast({ title: "Cannot check in - previous check-out not recorded", description: `Please check out from ${openEntry.checkInTime} first`, variant: "destructive" });
+      return;
+    }
+
     markStaffPresentMutation.mutate({
       personType: staff.role,
       personId: staff.id,
@@ -237,6 +331,20 @@ export default function AttendancePage() {
       checkInTime: staffCheckInTime,
       checkOutTime: staffCheckOutTime || undefined,
       notes: staffNotes || undefined,
+    });
+  };
+
+  const handleOpenCheckOut = (record: StaffAttendance) => {
+    setSelectedRecordForCheckOut(record);
+    setCheckOutTimeInput(format(new Date(), "HH:mm"));
+    setCheckOutModalOpen(true);
+  };
+
+  const handleCheckOut = () => {
+    if (!selectedRecordForCheckOut) return;
+    checkOutMutation.mutate({
+      id: selectedRecordForCheckOut.id,
+      checkOutTime: checkOutTimeInput,
     });
   };
 
@@ -260,23 +368,30 @@ export default function AttendancePage() {
     },
   });
 
-  const handleSelfCheckIn = () => {
+  const handleSelfCheckIn = async () => {
     if (!userRole || (userRole !== "trainer" && userRole !== "staff" && userRole !== "admin" && userRole !== "manager")) {
       toast({ title: "Not authorized", variant: "destructive" });
       return;
     }
 
     // Find the current user in staff list
-    const res = staffUsers.find(u => u.role === userRole);
-    if (!res) {
+    const currentUser = staffUsers.find(u => u.role === userRole);
+    if (!currentUser) {
       toast({ title: "Could not find your profile", variant: "destructive" });
       return;
     }
 
+    // Check for unchecked-out entry
+    const openEntry = await checkOpenEntryQuery(currentUser.id, dateStr);
+    if (openEntry) {
+      toast({ title: "Cannot check in - previous check-out not recorded", description: `Please check out from ${openEntry.checkInTime} first`, variant: "destructive" });
+      return;
+    }
+
     selfCheckInMutation.mutate({
-      personType: res.role,
-      personId: res.id,
-      personName: `${res.firstName} ${res.lastName || ""}`.trim(),
+      personType: currentUser.role,
+      personId: currentUser.id,
+      personName: `${currentUser.firstName} ${currentUser.lastName || ""}`.trim(),
     });
   };
 
@@ -336,6 +451,25 @@ export default function AttendancePage() {
     },
   });
 
+  const checkOutMutation = useMutation({
+    mutationFn: async (data: { id: string; checkOutTime: string }) => {
+      const res = await apiRequest("PATCH", `/api/staff-attendance/${data.id}`, {
+        checkOutTime: data.checkOutTime,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/staff-attendance"] });
+      toast({ title: "Check-out recorded successfully" });
+      setCheckOutModalOpen(false);
+      setSelectedRecordForCheckOut(null);
+      setCheckOutTimeInput(format(new Date(), "HH:mm"));
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleDeleteAttendance = (id: string) => {
     if (confirm("Are you sure you want to delete this attendance record?")) {
       deleteAttendanceMutation.mutate(id);
@@ -389,6 +523,68 @@ export default function AttendancePage() {
             </CardContent>
           </Card>
         )}
+
+        <Dialog open={checkOutModalOpen} onOpenChange={setCheckOutModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Record Check-out</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="text-sm text-muted-foreground">
+                Recording check-out for <span className="font-medium text-foreground">{selectedRecordForCheckOut?.personName}</span>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Check-in time: <span className="font-medium text-foreground">{selectedRecordForCheckOut?.checkInTime}</span>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Check-out Time</label>
+                <Input
+                  type="time"
+                  value={checkOutTimeInput}
+                  onChange={(e) => setCheckOutTimeInput(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setCheckOutModalOpen(false)}>Cancel</Button>
+                <Button onClick={handleCheckOut} disabled={checkOutMutation.isPending}>
+                  {checkOutMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Save Check-out
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={memberCheckOutModalOpen} onOpenChange={setMemberCheckOutModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Record Member Check-out</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="text-sm text-muted-foreground">
+                Recording check-out for <span className="font-medium text-foreground">{selectedMemberRecordForCheckOut?.memberName}</span>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Check-in time: <span className="font-medium text-foreground">{selectedMemberRecordForCheckOut?.checkInTime}</span>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Check-out Time</label>
+                <Input
+                  type="time"
+                  value={memberCheckOutTimeInput}
+                  onChange={(e) => setMemberCheckOutTimeInput(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setMemberCheckOutModalOpen(false)}>Cancel</Button>
+                <Button onClick={handleMemberCheckOut} disabled={memberCheckOutMutation.isPending}>
+                  {memberCheckOutMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Save Check-out
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as AttendanceTab)} className="w-full">
           <TabsList className="grid w-full grid-cols-2 max-w-md">
@@ -479,8 +675,10 @@ export default function AttendancePage() {
                           <th className="px-4 py-3">Time</th>
                           <th className="px-4 py-3">Member</th>
                           <th className="px-4 py-3">Method</th>
+                          <th className="px-4 py-3">Check-out</th>
+                          <th className="px-4 py-3">Hours</th>
                           <th className="px-4 py-3">Status</th>
-                          {canDelete && <th className="px-4 py-3 w-[80px]">Actions</th>}
+                          <th className="px-4 py-3 w-[100px]">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -496,21 +694,40 @@ export default function AttendancePage() {
                                 <span className="text-xs">{record.method}</span>
                               </div>
                             </td>
+                            <td className="px-4 py-3 font-mono text-muted-foreground">
+                              {record.checkOutTime || "--"}
+                            </td>
+                            <td className="px-4 py-3 font-mono text-muted-foreground">
+                              {calculateHours(record.checkInTime, record.checkOutTime || "")}
+                            </td>
                             <td className="px-4 py-3 text-green-500 font-medium text-xs">Present</td>
-                            {canDelete && (
-                              <td className="px-4 py-3">
+                            <td className="px-4 py-3">
+                              {!record.checkOutTime ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs gap-1"
+                                  onClick={() => handleMemberOpenCheckOut(record)}
+                                >
+                                  <LogOut className="h-3 w-3" />
+                                  Check Out
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">--</span>
+                              )}
+                              {canDelete && record.checkOutTime && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive ml-1"
                                   onClick={() => handleDeleteAttendance(record.id)}
                                   disabled={deleteAttendanceMutation.isPending}
                                   data-testid={`button-delete-attendance-${record.id}`}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
-                              </td>
-                            )}
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -679,8 +896,9 @@ export default function AttendancePage() {
                           <th className="px-4 py-3">Type</th>
                           <th className="px-4 py-3">Method</th>
                           <th className="px-4 py-3">Check-out</th>
+                          <th className="px-4 py-3">Hours</th>
                           <th className="px-4 py-3">Status</th>
-                          {canDelete && <th className="px-4 py-3 w-[80px]">Actions</th>}
+                          <th className="px-4 py-3 w-[100px]">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -704,21 +922,37 @@ export default function AttendancePage() {
                             <td className="px-4 py-3 font-mono text-muted-foreground">
                               {record.checkOutTime || "--"}
                             </td>
+                            <td className="px-4 py-3 font-mono text-muted-foreground">
+                              {calculateHours(record.checkInTime, record.checkOutTime || "")}
+                            </td>
                             <td className="px-4 py-3 text-green-500 font-medium text-xs">Present</td>
-                            {canDelete && (
-                              <td className="px-4 py-3">
+                            <td className="px-4 py-3">
+                              {!record.checkOutTime ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs gap-1"
+                                  onClick={() => handleOpenCheckOut(record)}
+                                >
+                                  <LogOut className="h-3 w-3" />
+                                  Check Out
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">-</span>
+                              )}
+                              {canDelete && record.checkOutTime && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive ml-1"
                                   onClick={() => handleDeleteStaffAttendance(record.id)}
                                   disabled={deleteStaffAttendanceMutation.isPending}
                                   data-testid={`button-delete-staff-attendance-${record.id}`}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
-                              </td>
-                            )}
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>

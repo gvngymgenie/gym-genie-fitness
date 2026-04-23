@@ -287,6 +287,7 @@ export const attendance = pgTable("attendance", {
   memberName: text("member_name").notNull(),
   date: text("date").notNull(),
   checkInTime: text("check_in_time").notNull(),
+  checkOutTime: text("check_out_time"),
   method: text("method").notNull().default("Manual"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

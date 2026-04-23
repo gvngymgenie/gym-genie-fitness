@@ -48,4 +48,38 @@ export function registerAttendanceRoutes(app: Express) {
       res.status(500).json({ error: "Failed to delete attendance record" });
     }
   });
+
+  // Update check-out time
+  app.patch("/api/attendance/:id", async (req, res) => {
+    try {
+      const { checkOutTime } = req.body;
+      if (!checkOutTime) {
+        return res.status(400).json({ error: "checkOutTime is required" });
+      }
+      const updated = await storage.updateAttendanceCheckOut(req.params.id, checkOutTime);
+      if (!updated) {
+        return res.status(404).json({ error: "Attendance record not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Failed to update check-out time:", error);
+      res.status(500).json({ error: "Failed to update check-out time" });
+    }
+  });
+
+  // Get open (unchecked-out) entries
+  app.get("/api/attendance/open", async (req, res) => {
+    try {
+      const memberId = req.query.memberId as string;
+      const date = req.query.date as string;
+      if (!memberId || !date) {
+        return res.status(400).json({ error: "memberId and date query parameters are required" });
+      }
+      const record = await storage.getOpenAttendance(memberId, date);
+      res.json(record || null);
+    } catch (error) {
+      console.error("Failed to check open attendance:", error);
+      res.status(500).json({ error: "Failed to check open attendance" });
+    }
+  });
 }
